@@ -409,8 +409,21 @@
         </div>
     </div>
 
+    <!-- MODAL RAZÓN DE PÉRDIDA -->
+    <div id="lossReasonModal" class="hidden fixed inset-0 bg-black/40 z-[3000] flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg w-full max-w-md p-6 space-y-4">
+            <h2 class="font-bold text-lg text-gray-800">Motivo de Pérdida</h2>
+            <p class="text-sm text-gray-600">Por favor, escribe la razón por la que se perdió este proyecto/cotización. Esto quedará registrado en el historial del cliente.</p>
+            <textarea id="lossReasonText" rows="3" class="w-full border rounded px-3 py-2 text-sm text-base" placeholder="Ej: El cliente eligió a la competencia por precio"></textarea>
+            <div class="flex justify-end gap-2">
+                <button id="cancelLossBtn" class="text-sm px-3 py-2 text-gray-600">Cancelar</button>
+                <button id="confirmLossBtn" class="text-sm px-4 py-2 bg-red-600 text-white rounded">Confirmar Pérdida</button>
+            </div>
+        </div>
+    </div>
+
     <!-- MESSAGE BOX -->
-    <div id="message-box" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 z-[3000] items-center justify-center p-4">
+    <div id="message-box" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 z-[4000] items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 max-w-sm mx-auto text-center transform transition-all duration-300">
             <p id="message-text" class="text-gray-700 font-semibold mb-4 whitespace-pre-line text-left"></p>
             <button id="close-message-btn" class="px-4 py-2 bg-indigo-500 text-white rounded-full hover:bg-indigo-600 transition duration-150">Entendido</button>
@@ -505,6 +518,10 @@
         let editingQuoteId = null;
         let productsChartInstance = null;
 
+        // Para gestionar pérdidas
+        let losingItemType = null; // 'quote' o 'project'
+        let losingItemId = null;
+
         const messageBox = document.getElementById('message-box');
         const messageText = document.getElementById('message-text');
         const closeMessageBtn = document.getElementById('close-message-btn');
@@ -545,7 +562,7 @@
             const clients = JSON.parse(localStorage.getItem('clients') || '[]');
             const quotes = JSON.parse(localStorage.getItem('quotes') || '[]');
             
-            const closedQuotes = quotes.filter(q => q.status === 'cerrada');
+            const closedQuotes = quotes.filter(q => q.status === 'ganada');
 
             // Gráfica de Productos
             const productCounts = {};
@@ -591,30 +608,28 @@
         }
 
         function renderUpcomingCloses() {
-            const projects = JSON.parse(localStorage.getItem('projects') || '[]');
-            const quotes = JSON.parse(localStorage.getItem('quotes') || '[]');
+            const projects = JSON.parse(localStorage.getItem('projects') || '[]').filter(p => p.status === 'activo' || !p.status);
+            const quotes = JSON.parse(localStorage.getItem('quotes') || '[]').filter(q => q.status === 'abierta' || !q.status);
             const clients = JSON.parse(localStorage.getItem('clients') || '[]');
             
             let upcomingItems = [];
             
             quotes.forEach(q => {
-                if (q.status !== 'cerrada') {
-                    const client = clients.find(c => c.id === q.clientId);
-                    upcomingItems.push({
-                        type: 'Cotización',
-                        id: q.id,
-                        clientId: q.clientId,
-                        projectId: q.projectId || null,
-                        closeDate: q.closeDate,
-                        clientName: client ? `${client.name} ${client.lastname}` : 'Cliente desconocido',
-                        title: q.quoteNumber ? `Cotización: ${q.quoteNumber}` : 'Cotización sin número',
-                        amount: q.amount
-                    });
-                }
+                const client = clients.find(c => c.id === q.clientId);
+                upcomingItems.push({
+                    type: 'Cotización',
+                    id: q.id,
+                    clientId: q.clientId,
+                    projectId: q.projectId || null,
+                    closeDate: q.closeDate,
+                    clientName: client ? `${client.name} ${client.lastname}` : 'Cliente desconocido',
+                    title: q.quoteNumber ? `Cotización: ${q.quoteNumber}` : 'Cotización sin número',
+                    amount: q.amount
+                });
             });
             
             projects.forEach(p => {
-                const hasOpenQuote = quotes.some(q => q.projectId === p.id && q.status !== 'cerrada');
+                const hasOpenQuote = quotes.some(q => q.projectId === p.id);
                 if (!hasOpenQuote) {
                     const client = clients.find(c => c.id === p.clientId);
                     upcomingItems.push({
@@ -680,8 +695,8 @@
             const sortBy = document.getElementById('sortClientsSelect').value;
 
             const clientStats = clients.map(c => {
-                const clientClosedQuotes = quotes.filter(q => q.clientId === c.id && q.status === 'cerrada');
-                const spent = clientClosedQuotes.reduce((sum, q) => sum + parseFloat(q.amount || 0), 0);
+                const clientWonQuotes = quotes.filter(q => q.clientId === c.id && q.status === 'ganada');
+                const spent = clientWonQuotes.reduce((sum, q) => sum + parseFloat(q.amount || 0), 0);
                 return { ...c, spent: spent };
             });
 
@@ -964,18 +979,18 @@
                             </div>
                             
                             <div class="space-y-3">
-                                <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wide">Proyectos Activos en Mapa</h3>
-                                <div id="view-projects-list" class="space-y-3"></div>
+                                <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wide">Activos en Mapa y Cotizaciones</h3>
+                                <div id="view-active-list" class="space-y-3"></div>
                             </div>
 
                             <div class="space-y-3">
-                                <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wide">Cotizaciones Abiertas</h3>
-                                <div id="view-open-quotes-list" class="space-y-3"></div>
+                                <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wide">Historial de Ventas (Ganadas)</h3>
+                                <div id="view-won-list" class="space-y-3"></div>
                             </div>
 
                             <div class="space-y-3">
-                                <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wide">Historial de Compras</h3>
-                                <div id="view-closed-quotes-list" class="space-y-3"></div>
+                                <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wide">Proyectos/Cotizaciones Perdidas</h3>
+                                <div id="view-lost-list" class="space-y-3"></div>
                             </div>
 
                             <div class="space-y-3">
@@ -999,115 +1014,160 @@
             document.getElementById('view-categories').textContent = (c.categories||[]).join(', ');
 
             const allQuotes = JSON.parse(localStorage.getItem('quotes') || '[]');
+            const allProjects = JSON.parse(localStorage.getItem('projects') || '[]');
             
-            const linkedProjects = JSON.parse(localStorage.getItem('projects') || '[]').filter(p => p.clientId === c.id);
-            linkedProjects.sort((a, b) => daysRemaining(a.closeDate) - daysRemaining(b.closeDate));
-            
-            const projectsListContainer = document.getElementById('view-projects-list');
-            if (linkedProjects.length > 0) {
-                projectsListContainer.innerHTML = linkedProjects.map(p => {
-                    const days = daysRemaining(p.closeDate);
-                    const color = getMarkerColorByDays(days);
-                    let colorClass = 'bg-green-100 text-green-800';
-                    if (color === 'orange') colorClass = 'bg-orange-100 text-orange-800';
-                    if (color === 'red') colorClass = 'bg-red-100 text-red-800';
-
-                    let quoteInfo = '';
-                    if (p.quoteId) {
-                        const linkedQuote = allQuotes.find(q => q.id == p.quoteId);
-                        if (linkedQuote) {
-                            quoteInfo = `<p class="mt-1"><span class="font-medium text-sky-300">Cotización:</span> ${linkedQuote.quoteNumber || 'Sin número'} ($${parseFloat(linkedQuote.amount).toFixed(2)})</p>`;
-                        }
-                    }
-
-                    return `
-                    <div class="rounded-xl bg-sky-900 text-sky-100 p-4 space-y-2">
-                        <div class="flex justify-between items-center">
-                            <span class="text-xs ${colorClass} px-2 py-1 rounded-full font-bold">Faltan ${days} días</span>
-                            <button onclick="goToMapProject(${p.id})" class="text-xs bg-sky-600 hover:bg-sky-700 px-3 py-1 rounded text-white font-medium">Ver en mapa</button>
-                        </div>
-                        <p><span class="font-medium text-sky-300">Material:</span> ${p.material || 'N/A'}</p>
-                        <p><span class="font-medium text-sky-300">Cierre:</span> ${p.closeDate || 'Sin fecha'}</p>
-                        <p><span class="font-medium text-sky-300">Notas:</span> ${p.notes || 'Sin notas'}</p>
-                        ${quoteInfo}
-                    </div>`;
-                }).join('');
-            } else {
-                projectsListContainer.innerHTML = `<p class="text-sm text-gray-500 italic">Este cliente no tiene proyectos asociados en el mapa.</p>`;
-            }
-
             const clientQuotes = allQuotes.filter(q => q.clientId === c.id);
-            const openQuotes = clientQuotes.filter(q => q.status !== 'cerrada');
-            const closedQuotes = clientQuotes.filter(q => q.status === 'cerrada');
+            const clientProjects = allProjects.filter(p => p.clientId === c.id);
 
-            const openQuotesContainer = document.getElementById('view-open-quotes-list');
-            if (openQuotes.length > 0) {
-                openQuotesContainer.innerHTML = openQuotes.map(q => {
-                    const days = daysRemaining(q.closeDate);
-                    const color = getMarkerColorByDays(days);
-                    let colorClass = 'bg-green-100 text-green-800';
-                    if (color === 'orange') colorClass = 'bg-orange-100 text-orange-800';
-                    if (color === 'red') colorClass = 'bg-red-100 text-red-800';
+            // 1. Activos
+            const activeQuotes = clientQuotes.filter(q => q.status === 'abierta' || !q.status);
+            const activeProjects = clientProjects.filter(p => p.status === 'activo' || !p.status);
+            const activeList = document.getElementById('view-active-list');
+            
+            let activeHtml = '';
+            activeProjects.forEach(p => {
+                const days = daysRemaining(p.closeDate);
+                const color = getMarkerColorByDays(days);
+                let colorClass = 'bg-green-100 text-green-800';
+                if (color === 'orange') colorClass = 'bg-orange-100 text-orange-800';
+                if (color === 'red') colorClass = 'bg-red-100 text-red-800';
 
-                    let projectBtn = '';
-                    if (q.projectId) {
-                        projectBtn = `<button onclick="goToMapProject(${q.projectId})" class="flex-1 bg-sky-600 hover:bg-sky-700 text-white py-1.5 rounded text-xs font-medium">Ver en mapa</button>`;
-                    }
+                activeHtml += `
+                <div class="rounded-xl bg-sky-900 text-sky-100 p-4 space-y-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs ${colorClass} px-2 py-1 rounded-full font-bold">Faltan ${days} días</span>
+                        <button onclick="goToMapProject(${p.id})" class="text-xs bg-sky-600 hover:bg-sky-700 px-3 py-1 rounded text-white font-medium">Ver en mapa</button>
+                    </div>
+                    <p><span class="font-medium text-sky-300">Proyecto:</span> ${p.material || 'N/A'}</p>
+                    <p><span class="font-medium text-sky-300">Cierre:</span> ${p.closeDate || 'Sin fecha'}</p>
+                    <div class="flex gap-2 pt-2 border-t border-sky-800 mt-2">
+                        <button onclick="markItemWon('project', ${p.id})" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-1.5 rounded text-xs font-medium">Ganado</button>
+                        <button onclick="openLossModal('project', ${p.id})" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-1.5 rounded text-xs font-medium">Perder</button>
+                    </div>
+                </div>`;
+            });
 
-                    return `
-                    <div class="rounded-xl bg-emerald-900 text-emerald-100 p-4 space-y-2">
-                        <div class="flex justify-between items-center">
-                            <span class="text-xs ${colorClass} px-2 py-1 rounded-full font-bold">Cierre en ${days} días</span>
-                            <span class="text-xs bg-emerald-600 px-2 py-1 rounded-full font-bold">$${parseFloat(q.amount).toFixed(2)}</span>
-                        </div>
-                        <p><span class="font-medium text-emerald-300">Cotización No:</span> ${q.quoteNumber || 'N/A'}</p>
-                        <p><span class="font-medium text-emerald-300">Materiales:</span> ${q.materials.join(', ')}</p>
-                        <p><span class="font-medium text-emerald-300">Cierre:</span> ${q.closeDate || 'Sin fecha'}</p>
-                        <p><span class="font-medium text-emerald-300">Notas:</span> ${q.notes || 'Sin notas'}</p>
-                        <div class="flex gap-2 pt-2 border-t border-emerald-800 mt-2">
-                            <button onclick="openQuoteModal(null, ${q.id})" class="flex-1 bg-sky-600 hover:bg-sky-700 text-white py-1.5 rounded text-xs font-medium">Editar</button>
-                            ${projectBtn}
-                            <button onclick="toggleQuoteStatus(${q.id})" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-1.5 rounded text-xs font-medium">Cerrar (Vendido)</button>
-                            <button onclick="deleteQuote(${q.id})" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-1.5 rounded text-xs font-medium">Borrar</button>
-                        </div>
-                    </div>`;
-                }).join('');
-            } else {
-                openQuotesContainer.innerHTML = `<p class="text-sm text-gray-500 italic">No hay cotizaciones abiertas.</p>`;
-            }
+            activeQuotes.forEach(q => {
+                const days = daysRemaining(q.closeDate);
+                const color = getMarkerColorByDays(days);
+                let colorClass = 'bg-green-100 text-green-800';
+                if (color === 'orange') colorClass = 'bg-orange-100 text-orange-800';
+                if (color === 'red') colorClass = 'bg-red-100 text-red-800';
 
-            const closedQuotesContainer = document.getElementById('view-closed-quotes-list');
-            if (closedQuotes.length > 0) {
-                closedQuotesContainer.innerHTML = closedQuotes.map(q => {
-                    return `
-                    <div class="rounded-xl bg-slate-700 text-slate-100 p-4 space-y-2">
-                        <div class="flex justify-between items-center">
-                            <span class="text-xs bg-green-500 px-2 py-1 rounded-full font-bold text-white">Comprado</span>
-                            <span class="text-xs bg-slate-600 px-2 py-1 rounded-full font-bold">$${parseFloat(q.amount).toFixed(2)}</span>
-                        </div>
-                        <p><span class="font-medium text-slate-300">Cotización No:</span> ${q.quoteNumber || 'N/A'}</p>
-                        <p><span class="font-medium text-slate-300">Materiales:</span> ${q.materials.join(', ')}</p>
-                        <p><span class="font-medium text-slate-300">Fecha Cierre:</span> ${q.closedAt ? new Date(q.closedAt).toLocaleDateString() : 'N/A'}</p>
-                        <div class="flex gap-2 pt-2 border-t border-slate-600 mt-2">
-                            <button onclick="toggleQuoteStatus(${q.id})" class="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white py-1.5 rounded text-xs font-medium">Reabrir</button>
-                            <button onclick="deleteQuote(${q.id})" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-1.5 rounded text-xs font-medium">Borrar</button>
-                        </div>
-                    </div>`;
-                }).join('');
-            } else {
-                closedQuotesContainer.innerHTML = `<p class="text-sm text-gray-500 italic">Este cliente aún no tiene compras registradas.</p>`;
-            }
+                let projectBtn = q.projectId ? `<button onclick="goToMapProject(${q.projectId})" class="flex-1 bg-sky-600 hover:bg-sky-700 text-white py-1.5 rounded text-xs font-medium">Ver en mapa</button>` : '';
 
+                activeHtml += `
+                <div class="rounded-xl bg-emerald-900 text-emerald-100 p-4 space-y-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs ${colorClass} px-2 py-1 rounded-full font-bold">Cierre en ${days} días</span>
+                        <span class="text-xs bg-emerald-600 px-2 py-1 rounded-full font-bold">$${parseFloat(q.amount).toFixed(2)}</span>
+                    </div>
+                    <p><span class="font-medium text-emerald-300">Cotización No:</span> ${q.quoteNumber || 'N/A'}</p>
+                    <p><span class="font-medium text-emerald-300">Materiales:</span> ${q.materials.join(', ')}</p>
+                    <div class="flex gap-2 pt-2 border-t border-emerald-800 mt-2">
+                        <button onclick="openQuoteModal(null, ${q.id})" class="flex-1 bg-sky-600 hover:bg-sky-700 text-white py-1.5 rounded text-xs font-medium">Editar</button>
+                        ${projectBtn}
+                        <button onclick="markItemWon('quote', ${q.id})" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-1.5 rounded text-xs font-medium">Ganado</button>
+                        <button onclick="openLossModal('quote', ${q.id})" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-1.5 rounded text-xs font-medium">Perder</button>
+                    </div>
+                </div>`;
+            });
+
+            if (activeHtml === '') activeHtml = '<p class="text-sm text-gray-500 italic">No hay proyectos ni cotizaciones activas.</p>';
+            activeList.innerHTML = activeHtml;
+
+            // 2. Ganados
+            const wonQuotes = clientQuotes.filter(q => q.status === 'ganada');
+            const wonProjects = clientProjects.filter(p => p.status === 'ganado');
+            const wonList = document.getElementById('view-won-list');
+            let wonHtml = '';
+
+            wonProjects.forEach(p => {
+                wonHtml += `
+                <div class="rounded-xl bg-slate-700 text-slate-100 p-4 space-y-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs bg-green-500 px-2 py-1 rounded-full font-bold text-white">Proyecto Ganado</span>
+                    </div>
+                    <p><span class="font-medium text-slate-300">Proyecto:</span> ${p.material || 'N/A'}</p>
+                    <p><span class="font-medium text-slate-300">Fecha Cierre:</span> ${p.closedAt ? new Date(p.closedAt).toLocaleDateString() : 'N/A'}</p>
+                    <div class="flex gap-2 pt-2 border-t border-slate-600 mt-2">
+                        <button onclick="reopenItem('project', ${p.id})" class="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white py-1.5 rounded text-xs font-medium">Reabrir</button>
+                        <button onclick="deleteItemPermanent('project', ${p.id})" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-1.5 rounded text-xs font-medium">Borrar</button>
+                    </div>
+                </div>`;
+            });
+
+            wonQuotes.forEach(q => {
+                wonHtml += `
+                <div class="rounded-xl bg-slate-700 text-slate-100 p-4 space-y-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs bg-green-500 px-2 py-1 rounded-full font-bold text-white">Venta Cerrada</span>
+                        <span class="text-xs bg-slate-600 px-2 py-1 rounded-full font-bold">$${parseFloat(q.amount).toFixed(2)}</span>
+                    </div>
+                    <p><span class="font-medium text-slate-300">Cotización No:</span> ${q.quoteNumber || 'N/A'}</p>
+                    <p><span class="font-medium text-slate-300">Materiales:</span> ${q.materials.join(', ')}</p>
+                    <p><span class="font-medium text-slate-300">Fecha Cierre:</span> ${q.closedAt ? new Date(q.closedAt).toLocaleDateString() : 'N/A'}</p>
+                    <div class="flex gap-2 pt-2 border-t border-slate-600 mt-2">
+                        <button onclick="reopenItem('quote', ${q.id})" class="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white py-1.5 rounded text-xs font-medium">Reabrir</button>
+                        <button onclick="deleteItemPermanent('quote', ${q.id})" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-1.5 rounded text-xs font-medium">Borrar</button>
+                    </div>
+                </div>`;
+            });
+
+            if (wonHtml === '') wonHtml = '<p class="text-sm text-gray-500 italic">Este cliente aún no tiene ventas registradas.</p>';
+            wonList.innerHTML = wonHtml;
+
+            // 3. Perdidos
+            const lostQuotes = clientQuotes.filter(q => q.status === 'perdida');
+            const lostProjects = clientProjects.filter(p => p.status === 'perdido');
+            const lostList = document.getElementById('view-lost-list');
+            let lostHtml = '';
+
+            lostProjects.forEach(p => {
+                lostHtml += `
+                <div class="rounded-xl bg-red-900 text-red-100 p-4 space-y-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs bg-red-500 px-2 py-1 rounded-full font-bold text-white">Proyecto Perdido</span>
+                    </div>
+                    <p><span class="font-medium text-red-300">Proyecto:</span> ${p.material || 'N/A'}</p>
+                    <p class="bg-red-950 p-2 rounded text-xs"><span class="font-bold text-red-200">Razón:</span> ${p.lossReason || 'No especificada'}</p>
+                    <div class="flex gap-2 pt-2 border-t border-red-800 mt-2">
+                        <button onclick="reopenItem('project', ${p.id})" class="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white py-1.5 rounded text-xs font-medium">Reabrir</button>
+                        <button onclick="deleteItemPermanent('project', ${p.id})" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-1.5 rounded text-xs font-medium">Borrar</button>
+                    </div>
+                </div>`;
+            });
+
+            lostQuotes.forEach(q => {
+                lostHtml += `
+                <div class="rounded-xl bg-red-900 text-red-100 p-4 space-y-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs bg-red-500 px-2 py-1 rounded-full font-bold text-white">Cotización Perdida</span>
+                        <span class="text-xs bg-red-600 px-2 py-1 rounded-full font-bold">$${parseFloat(q.amount).toFixed(2)}</span>
+                    </div>
+                    <p><span class="font-medium text-red-300">Cotización No:</span> ${q.quoteNumber || 'N/A'}</p>
+                    <p class="bg-red-950 p-2 rounded text-xs"><span class="font-bold text-red-200">Razón:</span> ${q.lossReason || 'No especificada'}</p>
+                    <div class="flex gap-2 pt-2 border-t border-red-800 mt-2">
+                        <button onclick="reopenItem('quote', ${q.id})" class="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white py-1.5 rounded text-xs font-medium">Reabrir</button>
+                        <button onclick="deleteItemPermanent('quote', ${q.id})" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-1.5 rounded text-xs font-medium">Borrar</button>
+                    </div>
+                </div>`;
+            });
+
+            if (lostHtml === '') lostHtml = '<p class="text-sm text-gray-500 italic">No hay registros de pérdidas.</p>';
+            lostList.innerHTML = lostHtml;
+
+            // Estadísticas (Solo ganadas)
             const statsContainer = document.getElementById('view-client-stats');
-            if (closedQuotes.length > 0) {
+            if (wonQuotes.length > 0) {
                 const productCounts = {};
-                closedQuotes.forEach(q => {
+                wonQuotes.forEach(q => {
                     q.materials.forEach(m => {
                         productCounts[m] = (productCounts[m] || 0) + 1;
                     });
                 });
                 const topProducts = Object.entries(productCounts).sort((a, b) => b[1] - a[1]);
-                const totalSpent = closedQuotes.reduce((sum, q) => sum + parseFloat(q.amount || 0), 0);
+                const totalSpent = wonQuotes.reduce((sum, q) => sum + parseFloat(q.amount || 0), 0);
 
                 statsContainer.innerHTML = `
                     <div class="mb-2"><strong>Total Comprado:</strong> $${totalSpent.toFixed(2)}</div>
@@ -1117,29 +1177,144 @@
                     </div>
                 `;
             } else {
-                statsContainer.innerHTML = `<p class="italic text-gray-500">Sin compras cerradas para calcular estadísticas.</p>`;
+                statsContainer.innerHTML = `<p class="italic text-gray-500">Sin ventas cerradas para calcular estadísticas.</p>`;
             }
 
             document.getElementById('clientViewModal').classList.remove('hidden');
             document.getElementById('clientViewModal').classList.add('flex');
         }
         
-        window.toggleQuoteStatus = function(id) {
-            let quotes = JSON.parse(localStorage.getItem('quotes') || '[]');
-            const i = quotes.findIndex(q => q.id === id);
-            if (i !== -1) {
-                if (quotes[i].status === 'cerrada') {
-                    quotes[i].status = 'abierta';
-                    quotes[i].closedAt = null;
-                    showMessage('Cotización reabierta.');
-                } else {
-                    quotes[i].status = 'cerrada';
+        // --- MANEJO DE ESTADOS (GANAR, PERDER, REABRIR) ---
+        window.markItemWon = function(type, id) {
+            if (type === 'quote') {
+                let quotes = JSON.parse(localStorage.getItem('quotes') || '[]');
+                const i = quotes.findIndex(q => q.id === id);
+                if (i !== -1) {
+                    quotes[i].status = 'ganada';
                     quotes[i].closedAt = new Date().toISOString();
-                    showMessage('¡Cotización cerrada! Compra registrada en el historial.');
+                    localStorage.setItem('quotes', JSON.stringify(quotes));
+                    
+                    if (quotes[i].projectId) markItemWon('project', quotes[i].projectId, true);
                 }
-                localStorage.setItem('quotes', JSON.stringify(quotes));
-                if (currentClientId) openClientDetail(currentClientId);
+            } else if (type === 'project') {
+                let projects = getStoredProjects();
+                const i = projects.findIndex(p => p.id === id);
+                if (i !== -1) {
+                    projects[i].status = 'ganado';
+                    projects[i].closedAt = new Date().toISOString();
+                    saveProjects(projects);
+                    removeMarkerFromMap(id);
+                }
             }
+            showMessage('¡Marcado como Ganado! Registrado en el historial.');
+            if (currentClientId) openClientDetail(currentClientId);
+        }
+
+        window.openLossModal = function(type, id) {
+            losingItemType = type;
+            losingItemId = id;
+            document.getElementById('lossReasonText').value = '';
+            document.getElementById('lossReasonModal').classList.remove('hidden');
+            document.getElementById('lossReasonModal').classList.add('flex');
+        }
+
+        document.getElementById('cancelLossBtn').onclick = function() {
+            document.getElementById('lossReasonModal').classList.add('hidden');
+            document.getElementById('lossReasonModal').classList.remove('flex');
+            losingItemType = null; losingItemId = null;
+        }
+
+        document.getElementById('confirmLossBtn').onclick = function() {
+            const reason = document.getElementById('lossReasonText').value.trim();
+            if (!reason) return alert('Debes escribir una razón para registrar la pérdida.');
+
+            if (losingItemType === 'quote') {
+                let quotes = JSON.parse(localStorage.getItem('quotes') || '[]');
+                const i = quotes.findIndex(q => q.id === losingItemId);
+                if (i !== -1) {
+                    quotes[i].status = 'perdida';
+                    quotes[i].lossReason = reason;
+                    quotes[i].closedAt = new Date().toISOString();
+                    localStorage.setItem('quotes', JSON.stringify(quotes));
+                    
+                    if (quotes[i].projectId) markItemLost('project', quotes[i].projectId, reason, true);
+                }
+            } else if (losingItemType === 'project') {
+                let projects = getStoredProjects();
+                const i = projects.findIndex(p => p.id === losingItemId);
+                if (i !== -1) {
+                    projects[i].status = 'perdido';
+                    projects[i].lossReason = reason;
+                    projects[i].closedAt = new Date().toISOString();
+                    saveProjects(projects);
+                    removeMarkerFromMap(losingItemId);
+                }
+            }
+
+            document.getElementById('lossReasonModal').classList.add('hidden');
+            document.getElementById('lossReasonModal').classList.remove('flex');
+            showMessage('Registro marcado como Perdido y movido al historial.');
+            if (currentClientId) openClientDetail(currentClientId);
+        }
+
+        window.markItemLost = function(type, id, reason, isInternalCall = false) {
+            if (type === 'project') {
+                let projects = getStoredProjects();
+                const i = projects.findIndex(p => p.id === id);
+                if (i !== -1) {
+                    projects[i].status = 'perdido';
+                    projects[i].lossReason = reason;
+                    projects[i].closedAt = new Date().toISOString();
+                    saveProjects(projects);
+                    removeMarkerFromMap(id);
+                }
+            }
+            // El de quote se maneja internamente en el click event para evitar loops
+        }
+
+        window.reopenItem = function(type, id) {
+            if (type === 'quote') {
+                let quotes = JSON.parse(localStorage.getItem('quotes') || '[]');
+                const i = quotes.findIndex(q => q.id === id);
+                if (i !== -1) {
+                    quotes[i].status = 'abierta';
+                    quotes[i].lossReason = null;
+                    quotes[i].closedAt = null;
+                    localStorage.setItem('quotes', JSON.stringify(quotes));
+                }
+            } else if (type === 'project') {
+                let projects = getStoredProjects();
+                const i = projects.findIndex(p => p.id === id);
+                if (i !== -1) {
+                    projects[i].status = 'activo';
+                    projects[i].lossReason = null;
+                    projects[i].closedAt = null;
+                    saveProjects(projects);
+                    // Volver a poner en mapa
+                    createMarker(projects[i]);
+                }
+            }
+            showMessage('Registro reabierto y devuelto a Activos.');
+            if (currentClientId) openClientDetail(currentClientId);
+        }
+
+        window.deleteItemPermanent = function(type, id) {
+            if (!confirm('¿Borrar definitivamente este registro? Esta acción no se puede deshacer.')) return;
+            if (type === 'quote') {
+                let quotes = JSON.parse(localStorage.getItem('quotes') || '[]').filter(q => q.id !== id);
+                localStorage.setItem('quotes', JSON.stringify(quotes));
+            } else if (type === 'project') {
+                let projects = getStoredProjects().filter(p => p.id !== id);
+                saveProjects(projects);
+                removeMarkerFromMap(id);
+            }
+            showMessage('Registro borrado permanentemente.');
+            if (currentClientId) openClientDetail(currentClientId);
+        }
+
+        function removeMarkerFromMap(id) {
+            const m = markersMap.get(id);
+            if (m) { m.remove(); markersMap.delete(id); }
         }
 
         window.goToMapProject = function(projectId) {
@@ -1316,11 +1491,6 @@
         let selectingFromMap = false;
         let editingProjectId = null;
         const markersMap = new Map();
-        let deleteConfirmId = null;
-        let deleteTimeout = null;
-        let userMarker = null;
-        let userAccuracyCircle = null;
-        let watchId = null;
 
         const projectListModal = document.getElementById('projectListModal');
         const projectListDiv = document.getElementById('projectList');
@@ -1366,7 +1536,7 @@
             clientResults.classList.add('hidden');
             clientSearchInput.value = '';
 
-            const quotes = JSON.parse(localStorage.getItem('quotes') || '[]').filter(q => q.clientId === c.id);
+            const quotes = JSON.parse(localStorage.getItem('quotes') || '[]').filter(q => q.clientId === c.id && (q.status === 'abierta' || !q.status));
             const select = document.getElementById('projectQuoteSelect');
             const container = document.getElementById('projectQuoteContainer');
             select.innerHTML = '<option value="">-- Ninguna --</option>';
@@ -1474,7 +1644,7 @@
 
         function startLiveLocation() {
             if (!navigator.geolocation) return alert('Geolocalización no soportada');
-            watchId = navigator.geolocation.watchPosition(pos => {
+            navigator.geolocation.watchPosition(pos => {
                 const lat = pos.coords.latitude, lng = pos.coords.longitude, acc = pos.coords.accuracy;
                 const ll = [lat, lng];
                 if (!userMarker) {
@@ -1515,6 +1685,8 @@
         function saveProjects(p) { localStorage.setItem('projects', JSON.stringify(p)); }
 
         function createMarker(p) {
+            if (p.status && p.status !== 'activo') return; // No mostrar en mapa si está ganado o perdido
+
             const days = daysRemaining(p.closeDate);
             const color = getMarkerColorByDays(days);
             const bg = getBadgeBg(color);
@@ -1549,7 +1721,7 @@
         function loadProjects() { getStoredProjects().forEach(createMarker); }
 
         function renderProjectList(filter = '') {
-            let projects = getStoredProjects();
+            let projects = getStoredProjects().filter(p => p.status === 'activo' || !p.status);
             projects.sort((a, b) => daysRemaining(a.closeDate) - daysRemaining(b.closeDate));
             projectListDiv.innerHTML = '';
             projects.filter(p => `${p.name} ${p.phone} ${p.material} ${p.address}`.toLowerCase().includes(filter.toLowerCase())).forEach(p => {
@@ -1603,7 +1775,7 @@
                 if (oldM) { oldM.remove(); markersMap.delete(editingProjectId); }
                 createMarker(projects[i]);
             } else {
-                const p = { id: Date.now(), quoteId: linkedQuoteId, clientId: linkedClientId || null, address: clientNameInput.dataset.address || '', name: clientNameInput.value, phone: clientPhoneInput.value, material: document.getElementById('material').value, closeDate: document.getElementById('closeDate').value, notes: document.getElementById('notes').value, lat: selectedLatLng.lat, lng: selectedLatLng.lng, createdAt: new Date().toISOString() };
+                const p = { id: Date.now(), status: 'activo', quoteId: linkedQuoteId, clientId: linkedClientId || null, address: clientNameInput.dataset.address || '', name: clientNameInput.value, phone: clientPhoneInput.value, material: document.getElementById('material').value, closeDate: document.getElementById('closeDate').value, notes: document.getElementById('notes').value, lat: selectedLatLng.lat, lng: selectedLatLng.lng, createdAt: new Date().toISOString() };
                 projects.push(p);
                 createMarker(p);
             }
@@ -1640,7 +1812,7 @@
             if (p.clientId) {
                 const c = getClients().find(c => c.id === p.clientId);
                 if (c) {
-                    const quotes = JSON.parse(localStorage.getItem('quotes') || '[]').filter(q => q.clientId === c.id);
+                    const quotes = JSON.parse(localStorage.getItem('quotes') || '[]').filter(q => q.clientId === c.id && (q.status === 'abierta' || !q.status));
                     const select = document.getElementById('projectQuoteSelect');
                     const container = document.getElementById('projectQuoteContainer');
                     select.innerHTML = '<option value="">-- Ninguna --</option>';
@@ -1661,15 +1833,7 @@
         };
 
         window.deleteProject = function(id) {
-            if (deleteConfirmId !== id) {
-                deleteConfirmId = id;
-                const btn = document.querySelector(`button[onclick="deleteProject(${id})"]`);
-                if (btn) { btn.textContent = '¿Confirmar?'; btn.style.background = '#991b1b'; }
-                deleteTimeout = setTimeout(() => { if (btn) { btn.textContent = 'Eliminar'; btn.style.background = '#dc2626'; } deleteConfirmId = null; }, 3000);
-                return;
-            }
-            clearTimeout(deleteTimeout);
-            deleteConfirmId = null;
+            if (!confirm('¿Eliminar este punto del mapa definitivamente?')) return;
             let projects = getStoredProjects().filter(p => p.id !== id);
             saveProjects(projects);
             
@@ -1677,8 +1841,7 @@
             quotes.forEach(q => { if(q.projectId == id) q.projectId = null; });
             localStorage.setItem('quotes', JSON.stringify(quotes));
 
-            const m = markersMap.get(id);
-            if (m) { m.remove(); markersMap.delete(id); }
+            removeMarkerFromMap(id);
         };
 
         // ----------------------------------------------------
@@ -1712,7 +1875,7 @@
             quoteClientSearch.value = `${c.name} ${c.lastname||''}`.trim();
             quoteClientResults.classList.add('hidden');
 
-            const projects = getStoredProjects().filter(p => p.clientId === c.id);
+            const projects = getStoredProjects().filter(p => p.clientId === c.id && (p.status === 'activo' || !p.status));
             const select = document.getElementById('quoteProjectSelect');
             const container = document.getElementById('quoteProjectContainer');
             select.innerHTML = '<option value="">-- Ninguno --</option>';
@@ -1810,6 +1973,7 @@
                     id: Date.now(),
                     status: 'abierta',
                     closedAt: null,
+                    lossReason: null,
                     projectId: linkedProjectId,
                     clientId: clientId,
                     quoteNumber: document.getElementById('quoteNumber').value.trim(),
@@ -1844,29 +2008,6 @@
                 openClientDetail(clientId);
             }
         }
-
-        window.deleteQuote = function(id) {
-            if (!confirm('¿Estás seguro de que deseas eliminar esta cotización?')) return;
-            let quotes = JSON.parse(localStorage.getItem('quotes') || '[]').filter(q => q.id !== id);
-            localStorage.setItem('quotes', JSON.stringify(quotes));
-            
-            let projects = getStoredProjects();
-            projects.forEach(p => { if(p.quoteId == id) p.quoteId = null; });
-            saveProjects(projects);
-
-            projects.forEach(p => {
-                const oldM = markersMap.get(p.id);
-                if (oldM) { oldM.remove(); markersMap.delete(p.id); }
-                createMarker(p);
-            });
-
-            showMessage('Cotización eliminada.');
-            
-            if (document.getElementById('clientViewModal').classList.contains('flex') && currentClientId) {
-                openClientDetail(currentClientId);
-            }
-        };
-
     </script>
 </body>
 
