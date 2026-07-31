@@ -32,14 +32,12 @@
             overscroll-behavior: contain;
         }
 
-        /* Estilo del contenedor del mapa */
         #map {
             height: calc(100vh - 64px);
             width: 100%;
             z-index: 0;
         }
 
-        /* FABs */
         .fab-container {
             position: fixed;
             bottom: 1.5rem;
@@ -167,15 +165,12 @@
     </div>
 
     <!-- ================= FABs (BOTONES FLOTANTES) ================= -->
-    <!-- FAB Agregar Punto (Solo Proyectos) -->
     <div id="fab-add-container" class="fab-container hidden">
         <button id="openModalBtn" class="fab-button" style="background-color: #293241;" title="Agregar punto">➕</button>
     </div>
-    <!-- FAB Lista Puntos (Solo Proyectos) -->
     <div id="fab-list-container" class="fixed bottom-8 left-8 z-40 hidden">
         <button id="openListBtn" class="bg-black text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-xl hover:scale-110 transition" title="Ver proyectos">📋</button>
     </div>
-    <!-- FAB Cotización (Solo Clientes) -->
     <div id="fab-quote-container" class="fab-container hidden">
         <button onclick="openQuoteModal()" class="fab-button" style="background-color: #10b981;" title="Nueva Cotización">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -281,6 +276,15 @@
             </div>
             <input id="clientName" class="w-full border rounded px-3 py-2 text-sm text-base" placeholder="Nombre del cliente">
             <input id="clientPhone" class="w-full border rounded px-3 py-2 text-sm text-base" placeholder="Teléfono del cliente">
+            
+            <!-- SELECT COTIZACIÓN ASOCIADA -->
+            <div id="projectQuoteContainer" class="hidden">
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Cotización Asociada (Opcional)</label>
+                <select id="projectQuoteSelect" class="w-full border rounded px-3 py-2 text-sm text-base bg-white">
+                    <option value="">-- Ninguna --</option>
+                </select>
+            </div>
+
             <input id="material" class="w-full border rounded px-3 py-2 text-sm text-base" placeholder="Material interesado">
             <input id="closeDate" type="date" class="w-full border rounded px-3 py-2 text-sm text-base">
             <textarea id="notes" rows="2" class="w-full border rounded px-3 py-2 text-sm text-base" placeholder="Notas adicionales"></textarea>
@@ -315,6 +319,14 @@
                 <input id="quoteClientSearch" class="w-full border rounded px-3 py-2 text-sm text-base" placeholder="🔍 Buscar cliente por nombre o teléfono">
                 <div id="quoteClientResults" class="absolute w-full bg-white border rounded mt-1 max-h-40 overflow-auto hidden z-50"></div>
                 <input type="hidden" id="quoteClientId">
+            </div>
+
+            <!-- SELECT PROYECTO ASOCIADO -->
+            <div id="quoteProjectContainer" class="hidden">
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Asociar a Proyecto en Mapa (Opcional)</label>
+                <select id="quoteProjectSelect" class="w-full border rounded px-3 py-2 text-sm text-base bg-white">
+                    <option value="">-- Ninguno --</option>
+                </select>
             </div>
 
             <div>
@@ -741,6 +753,7 @@
             document.getElementById('view-address').textContent = c.address;
             document.getElementById('view-categories').textContent = (c.categories||[]).join(', ');
 
+            const allQuotes = JSON.parse(localStorage.getItem('quotes') || '[]');
             const linkedProjects = JSON.parse(localStorage.getItem('projects') || '[]').filter(p => p.clientId === c.id);
             linkedProjects.sort((a, b) => daysRemaining(a.closeDate) - daysRemaining(b.closeDate));
             
@@ -753,6 +766,14 @@
                     if (color === 'orange') colorClass = 'bg-orange-100 text-orange-800';
                     if (color === 'red') colorClass = 'bg-red-100 text-red-800';
 
+                    let quoteInfo = '';
+                    if (p.quoteId) {
+                        const linkedQuote = allQuotes.find(q => q.id == p.quoteId);
+                        if (linkedQuote) {
+                            quoteInfo = `<p class="mt-1"><span class="font-medium text-sky-300">Cotización:</span> ${linkedQuote.quoteNumber || 'Sin número'} ($${parseFloat(linkedQuote.amount).toFixed(2)})</p>`;
+                        }
+                    }
+
                     return `
                     <div class="rounded-xl bg-sky-900 text-sky-100 p-4 space-y-2">
                         <div class="flex justify-between items-center">
@@ -762,13 +783,14 @@
                         <p><span class="font-medium text-sky-300">Material:</span> ${p.material || 'N/A'}</p>
                         <p><span class="font-medium text-sky-300">Cierre:</span> ${p.closeDate || 'Sin fecha'}</p>
                         <p><span class="font-medium text-sky-300">Notas:</span> ${p.notes || 'Sin notas'}</p>
+                        ${quoteInfo}
                     </div>`;
                 }).join('');
             } else {
                 projectsListContainer.innerHTML = `<p class="text-sm text-gray-500 italic">Este cliente no tiene proyectos asociados en el mapa.</p>`;
             }
 
-            const linkedQuotes = JSON.parse(localStorage.getItem('quotes') || '[]').filter(q => q.clientId === c.id);
+            const linkedQuotes = allQuotes.filter(q => q.clientId === c.id);
             linkedQuotes.sort((a, b) => new Date(a.closeDate) - new Date(b.closeDate));
             
             const quotesListContainer = document.getElementById('view-quotes-list');
@@ -779,6 +801,11 @@
                     let colorClass = 'bg-green-100 text-green-800';
                     if (color === 'orange') colorClass = 'bg-orange-100 text-orange-800';
                     if (color === 'red') colorClass = 'bg-red-100 text-red-800';
+
+                    let projectBtn = '';
+                    if (q.projectId) {
+                        projectBtn = `<button onclick="goToMapProject(${q.projectId})" class="flex-1 bg-sky-600 hover:bg-sky-700 text-white py-1.5 rounded text-xs font-medium">Ver en mapa</button>`;
+                    }
 
                     return `
                     <div class="rounded-xl bg-emerald-900 text-emerald-100 p-4 space-y-2">
@@ -792,6 +819,7 @@
                         <p><span class="font-medium text-emerald-300">Notas:</span> ${q.notes || 'Sin notas'}</p>
                         <div class="flex gap-2 pt-2 border-t border-emerald-800 mt-2">
                             <button onclick="openQuoteModal(null, ${q.id})" class="flex-1 bg-sky-600 hover:bg-sky-700 text-white py-1.5 rounded text-xs font-medium">Editar</button>
+                            ${projectBtn}
                             <button onclick="deleteQuote(${q.id})" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-1.5 rounded text-xs font-medium">Eliminar</button>
                         </div>
                     </div>`;
@@ -1027,6 +1055,23 @@
             clientNameInput.dataset.address = c.address || '';
             clientResults.classList.add('hidden');
             clientSearchInput.value = '';
+
+            // Cargar cotizaciones en el select de proyectos
+            const quotes = JSON.parse(localStorage.getItem('quotes') || '[]').filter(q => q.clientId === c.id);
+            const select = document.getElementById('projectQuoteSelect');
+            const container = document.getElementById('projectQuoteContainer');
+            select.innerHTML = '<option value="">-- Ninguna --</option>';
+            if(quotes.length > 0) {
+                quotes.forEach(q => {
+                    const opt = document.createElement('option');
+                    opt.value = q.id;
+                    opt.textContent = `${q.quoteNumber || 'Sin número'} ($${q.amount})`;
+                    select.appendChild(opt);
+                });
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+            }
         }
 
         clientPhoneInput.addEventListener('blur', () => {
@@ -1044,6 +1089,8 @@
             clientIdInput.value = ''; clientNameInput.dataset.address = '';
             clientSearchInput.value = ''; clientResults.innerHTML = ''; clientResults.classList.add('hidden');
             editingProjectId = null; selectedLatLng = null;
+            document.getElementById('projectQuoteContainer').classList.add('hidden');
+            document.getElementById('projectQuoteSelect').value = "";
             if (tempMarker) { map.removeLayer(tempMarker); tempMarker = null; }
         }
         function openModal() {
@@ -1072,7 +1119,6 @@
 
         clientSearch.addEventListener('input', e => loadAndDisplayClients(e.target.value));
 
-        // Inicialización del mapa en diferido (Lazy Load)
         function initMap() {
             if (mapInitialized) return;
             mapInitialized = true;
@@ -1162,6 +1208,15 @@
             const days = daysRemaining(p.closeDate);
             const color = getMarkerColorByDays(days);
             const bg = getBadgeBg(color);
+            
+            let quoteInfo = '';
+            if (p.quoteId) {
+                const linkedQuote = JSON.parse(localStorage.getItem('quotes') || '[]').find(q => q.id == p.quoteId);
+                if (linkedQuote) {
+                    quoteInfo = `<div style="margin-bottom:6px;font-size:14px">💰 Cotización: <strong>$${linkedQuote.amount}</strong> (${linkedQuote.quoteNumber || 'Sin número'})</div>`;
+                }
+            }
+
             const marker = L.circleMarker([p.lat, p.lng], { radius: 9, color, fillColor: color, fillOpacity: 0.9 }).addTo(map);
             markersMap.set(p.id, marker);
             marker.bindPopup(`
@@ -1170,6 +1225,7 @@
                     <div style="font-size:18px;font-weight:800;margin-bottom:8px">${p.name}</div>
                     <div style="margin-bottom:6px">📞 <a href="tel:${p.phone}" style="color:#2563eb;font-weight:600">Llamar</a> &nbsp;|&nbsp; <a href="https://wa.me/${p.phone.replace(/[^0-9]/g,'')}" target="_blank" style="color:#16a34a;font-weight:600">WhatsApp</a></div>
                     <div style="margin-bottom:6px;font-size:14px">🧱 ${p.material}</div>
+                    ${quoteInfo}
                     <div style="font-size:13px;color:#374151;margin-bottom:6px">📍 ${p.address || 'Sin dirección'}</div>
                     <div style="font-size:13px;color:#374151;margin-bottom:10px">📝 ${p.notes || 'Sin notas'}</div>
                     <div style="display:flex;gap:8px">
@@ -1215,6 +1271,8 @@
             let projects = getStoredProjects();
             
             const linkedClientId = clientIdInput.value;
+            const linkedQuoteId = document.getElementById('projectQuoteSelect').value || null;
+
             if (linkedClientId) {
                 let clients = JSON.parse(localStorage.getItem('clients') || '[]');
                 const idx = clients.findIndex(c => c.id === linkedClientId);
@@ -1230,16 +1288,27 @@
             if (editingProjectId) {
                 const i = projects.findIndex(p => p.id === editingProjectId);
                 if (i === -1) return;
-                projects[i] = { ...projects[i], clientId: linkedClientId || null, address: clientNameInput.dataset.address || '', name: clientNameInput.value, phone: clientPhoneInput.value, material: document.getElementById('material').value, closeDate: document.getElementById('closeDate').value, notes: document.getElementById('notes').value, lat: selectedLatLng.lat, lng: selectedLatLng.lng };
+                projects[i] = { ...projects[i], quoteId: linkedQuoteId, clientId: linkedClientId || null, address: clientNameInput.dataset.address || '', name: clientNameInput.value, phone: clientPhoneInput.value, material: document.getElementById('material').value, closeDate: document.getElementById('closeDate').value, notes: document.getElementById('notes').value, lat: selectedLatLng.lat, lng: selectedLatLng.lng };
                 const oldM = markersMap.get(editingProjectId);
                 if (oldM) { oldM.remove(); markersMap.delete(editingProjectId); }
                 createMarker(projects[i]);
             } else {
-                const p = { id: Date.now(), clientId: linkedClientId || null, address: clientNameInput.dataset.address || '', name: clientNameInput.value, phone: clientPhoneInput.value, material: document.getElementById('material').value, closeDate: document.getElementById('closeDate').value, notes: document.getElementById('notes').value, lat: selectedLatLng.lat, lng: selectedLatLng.lng, createdAt: new Date().toISOString() };
+                const p = { id: Date.now(), quoteId: linkedQuoteId, clientId: linkedClientId || null, address: clientNameInput.dataset.address || '', name: clientNameInput.value, phone: clientPhoneInput.value, material: document.getElementById('material').value, closeDate: document.getElementById('closeDate').value, notes: document.getElementById('notes').value, lat: selectedLatLng.lat, lng: selectedLatLng.lng, createdAt: new Date().toISOString() };
                 projects.push(p);
                 createMarker(p);
             }
             saveProjects(projects);
+
+            // Actualizar la cotización para que tenga el projectId
+            if (linkedQuoteId) {
+                let quotes = JSON.parse(localStorage.getItem('quotes') || '[]');
+                const qi = quotes.findIndex(q => q.id == linkedQuoteId);
+                if (qi !== -1) {
+                    quotes[qi].projectId = editingProjectId || projects[projects.length-1].id;
+                    localStorage.setItem('quotes', JSON.stringify(quotes));
+                }
+            }
+
             if (tempMarker) { map.removeLayer(tempMarker); tempMarker = null; }
             selectedLatLng = null;
             resetModal();
@@ -1258,6 +1327,28 @@
             document.getElementById('notes').value = p.notes || '';
             clientIdInput.value = p.clientId || '';
             clientNameInput.dataset.address = p.address || '';
+            
+            // Cargar selects si hay cliente
+            if (p.clientId) {
+                const c = getClients().find(c => c.id === p.clientId);
+                if (c) {
+                    const quotes = JSON.parse(localStorage.getItem('quotes') || '[]').filter(q => q.clientId === c.id);
+                    const select = document.getElementById('projectQuoteSelect');
+                    const container = document.getElementById('projectQuoteContainer');
+                    select.innerHTML = '<option value="">-- Ninguna --</option>';
+                    if(quotes.length > 0) {
+                        quotes.forEach(q => {
+                            const opt = document.createElement('option');
+                            opt.value = q.id;
+                            opt.textContent = `${q.quoteNumber || 'Sin número'} ($${q.amount})`;
+                            select.appendChild(opt);
+                        });
+                        container.classList.remove('hidden');
+                    }
+                }
+            }
+            if (p.quoteId) document.getElementById('projectQuoteSelect').value = p.quoteId;
+
             openModal();
         };
 
@@ -1273,6 +1364,12 @@
             deleteConfirmId = null;
             let projects = getStoredProjects().filter(p => p.id !== id);
             saveProjects(projects);
+            
+            // Limpiar referencia en cotizaciones
+            let quotes = JSON.parse(localStorage.getItem('quotes') || '[]');
+            quotes.forEach(q => { if(q.projectId == id) q.projectId = null; });
+            localStorage.setItem('quotes', JSON.stringify(quotes));
+
             const m = markersMap.get(id);
             if (m) { m.remove(); markersMap.delete(id); }
         };
@@ -1307,13 +1404,29 @@
             document.getElementById('quoteClientId').value = c.id;
             quoteClientSearch.value = `${c.name} ${c.lastname||''}`.trim();
             quoteClientResults.classList.add('hidden');
+
+            // Cargar proyectos del cliente
+            const projects = getStoredProjects().filter(p => p.clientId === c.id);
+            const select = document.getElementById('quoteProjectSelect');
+            const container = document.getElementById('quoteProjectContainer');
+            select.innerHTML = '<option value="">-- Ninguno --</option>';
+            if(projects.length > 0) {
+                projects.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.id;
+                    opt.textContent = `${p.name} - ${p.address || 'Sin dirección'}`;
+                    select.appendChild(opt);
+                });
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+            }
         }
 
         function openQuoteModal(clientId = null, quoteId = null) {
             document.getElementById('quoteModal').classList.remove('hidden');
             document.getElementById('quoteModal').classList.add('flex');
             
-            // Reset fields
             quoteClientSearch.value = '';
             document.getElementById('quoteClientId').value = '';
             document.getElementById('quoteNumber').value = '';
@@ -1321,6 +1434,8 @@
             document.getElementById('quoteAmount').value = '';
             document.getElementById('quoteCloseDate').value = '';
             document.getElementById('quoteNotes').value = '';
+            document.getElementById('quoteProjectContainer').classList.add('hidden');
+            document.getElementById('quoteProjectSelect').value = "";
             
             editingQuoteId = null;
             document.getElementById('quoteModalTitle').textContent = 'Nueva Cotización';
@@ -1344,6 +1459,8 @@
                     document.getElementById('quoteAmount').value = q.amount || '';
                     document.getElementById('quoteCloseDate').value = q.closeDate || '';
                     document.getElementById('quoteNotes').value = q.notes || '';
+
+                    if (q.projectId) document.getElementById('quoteProjectSelect').value = q.projectId;
                 }
             } else if (clientId) {
                 const c = allClients.find(x => x.id === clientId);
@@ -1365,12 +1482,14 @@
             if (materials.length === 0) return alert('Selecciona al menos un material.');
 
             let quotes = JSON.parse(localStorage.getItem('quotes') || '[]');
+            const linkedProjectId = document.getElementById('quoteProjectSelect').value || null;
 
             if (editingQuoteId) {
                 const i = quotes.findIndex(q => q.id === editingQuoteId);
                 if (i !== -1) {
                     quotes[i] = {
                         ...quotes[i],
+                        projectId: linkedProjectId,
                         quoteNumber: document.getElementById('quoteNumber').value.trim(),
                         materials: materials,
                         amount: document.getElementById('quoteAmount').value || '0',
@@ -1383,6 +1502,7 @@
             } else {
                 const quoteData = {
                     id: Date.now(),
+                    projectId: linkedProjectId,
                     clientId: clientId,
                     quoteNumber: document.getElementById('quoteNumber').value.trim(),
                     materials: materials,
@@ -1396,6 +1516,22 @@
             }
 
             localStorage.setItem('quotes', JSON.stringify(quotes));
+
+            // Actualizar el proyecto en el mapa si se asoció
+            if (linkedProjectId) {
+                let projects = getStoredProjects();
+                const pi = projects.findIndex(p => p.id == linkedProjectId);
+                if (pi !== -1) {
+                    projects[pi].quoteId = editingQuoteId || quotes[quotes.length-1].id;
+                    saveProjects(projects);
+                    
+                    // Actualizar marcador en el mapa
+                    const oldM = markersMap.get(projects[pi].id);
+                    if (oldM) { oldM.remove(); markersMap.delete(projects[pi].id); }
+                    createMarker(projects[pi]);
+                }
+            }
+
             closeQuoteModal();
             
             if (document.getElementById('clientViewModal').classList.contains('flex')) {
@@ -1407,6 +1543,19 @@
             if (!confirm('¿Estás seguro de que deseas eliminar esta cotización?')) return;
             let quotes = JSON.parse(localStorage.getItem('quotes') || '[]').filter(q => q.id !== id);
             localStorage.setItem('quotes', JSON.stringify(quotes));
+            
+            // Limpiar referencia en proyectos
+            let projects = getStoredProjects();
+            projects.forEach(p => { if(p.quoteId == id) p.quoteId = null; });
+            saveProjects(projects);
+
+            // Actualizar marcadores
+            projects.forEach(p => {
+                const oldM = markersMap.get(p.id);
+                if (oldM) { oldM.remove(); markersMap.delete(p.id); }
+                createMarker(p);
+            });
+
             showMessage('Cotización eliminada.');
             
             if (document.getElementById('clientViewModal').classList.contains('flex') && currentClientId) {
