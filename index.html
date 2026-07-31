@@ -113,27 +113,18 @@
             <!-- Tarjetas de Resumen -->
             <div id="summary-cards" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"></div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                <!-- Gráfica de Productos -->
-                <div class="bg-white rounded-2xl shadow-md p-6">
-                    <h3 class="text-lg font-bold mb-4 text-gray-800">Top 5 Productos Más Vendidos</h3>
-                    <div style="height: 300px; position: relative;">
-                        <canvas id="productsChart"></canvas>
-                    </div>
+            <!-- Gráfica de Productos -->
+            <div class="bg-white rounded-2xl shadow-md p-6 mb-8">
+                <h3 class="text-lg font-bold mb-4 text-gray-800">Top 5 Productos Más Vendidos</h3>
+                <div style="height: 300px; position: relative;">
+                    <canvas id="productsChart"></canvas>
                 </div>
-                
-                <!-- Ranking de Clientes -->
-                <div class="bg-white rounded-2xl shadow-md p-6">
-                    <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
-                        <h3 class="text-lg font-bold text-gray-800">Ranking de Clientes</h3>
-                        <select id="sortClientsSelect" class="border rounded-lg px-3 py-2 text-sm text-gray-600 focus:ring-2 focus:ring-indigo-500" onchange="renderClientRanking()">
-                            <option value="spent">Ordenar: Mayor compra</option>
-                            <option value="name">Ordenar: Nombre (A-Z)</option>
-                            <option value="recent">Ordenar: Más recientes</option>
-                        </select>
-                    </div>
-                    <div id="client-ranking-list" class="space-y-2 max-h-[300px] overflow-y-auto pr-2"></div>
-                </div>
+            </div>
+            
+            <!-- Próximos a Cerrar -->
+            <div class="bg-white rounded-2xl shadow-md p-6">
+                <h3 class="text-lg font-bold mb-4 text-gray-800">Próximos a Cerrar (Cotizaciones y Proyectos)</h3>
+                <div id="upcoming-closes-list" class="space-y-3"></div>
             </div>
         </div>
     </div>
@@ -444,17 +435,13 @@
             const navClients = document.getElementById('nav-clients');
             const navProjects = document.getElementById('nav-projects');
 
-            // Ocultar todas las vistas
             homeView.classList.add('hidden');
             clientsView.classList.add('hidden');
             projectsView.classList.add('hidden');
-
-            // Reset FABs
             fabQuote.classList.add('hidden');
             fabAdd.classList.add('hidden');
             fabList.classList.add('hidden');
 
-            // Reset Nav active
             navHome.classList.remove('text-indigo-600', 'font-bold');
             navHome.classList.add('text-gray-600', 'font-medium');
             navClients.classList.remove('text-indigo-600', 'font-bold');
@@ -551,7 +538,6 @@
             const totalRevenue = closedQuotes.reduce((sum, q) => sum + parseFloat(q.amount || 0), 0);
             const openQuotes = quotes.filter(q => q.status !== 'cerrada').length;
 
-            // Tarjetas de resumen
             const summaryHtml = `
                 <div class="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
                     <div class="text-xs text-indigo-600 font-semibold uppercase tracking-wide">Ingresos (Cerrado)</div>
@@ -611,54 +597,92 @@
                 }
             });
 
-            renderClientRanking();
+            renderUpcomingCloses();
         }
 
-        function renderClientRanking() {
-            const clients = JSON.parse(localStorage.getItem('clients') || '[]');
+        function renderUpcomingCloses() {
+            const projects = JSON.parse(localStorage.getItem('projects') || '[]');
             const quotes = JSON.parse(localStorage.getItem('quotes') || '[]');
-            const sortBy = document.getElementById('sortClientsSelect').value;
-
-            const clientStats = clients.map(c => {
-                const clientClosedQuotes = quotes.filter(q => q.clientId === c.id && q.status === 'cerrada');
-                const spent = clientClosedQuotes.reduce((sum, q) => sum + parseFloat(q.amount || 0), 0);
-                return { ...c, spent: spent };
+            const clients = JSON.parse(localStorage.getItem('clients') || '[]');
+            
+            let upcomingItems = [];
+            
+            // 1. Añadir cotizaciones abiertas
+            quotes.forEach(q => {
+                if (q.status !== 'cerrada') {
+                    const client = clients.find(c => c.id === q.clientId);
+                    upcomingItems.push({
+                        type: 'Cotización',
+                        id: q.id,
+                        clientId: q.clientId,
+                        projectId: q.projectId || null,
+                        closeDate: q.closeDate,
+                        clientName: client ? `${client.name} ${client.lastname}` : 'Cliente desconocido',
+                        title: q.quoteNumber ? `Cotización: ${q.quoteNumber}` : 'Cotización sin número',
+                        amount: q.amount
+                    });
+                }
             });
-
-            if (sortBy === 'spent') {
-                clientStats.sort((a, b) => b.spent - a.spent);
-            } else if (sortBy === 'name') {
-                clientStats.sort((a, b) => `${a.name} ${a.lastname}`.localeCompare(`${b.name} ${b.lastname}`));
-            } else if (sortBy === 'recent') {
-                clientStats.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-            }
-
-            const list = document.getElementById('client-ranking-list');
-            if (clientStats.length === 0) {
-                list.innerHTML = '<p class="text-gray-500 italic text-sm">No hay clientes para mostrar.</p>';
+            
+            // 2. Añadir proyectos que NO tienen una cotización abierta vinculada
+            projects.forEach(p => {
+                const hasOpenQuote = quotes.some(q => q.projectId === p.id && q.status !== 'cerrada');
+                if (!hasOpenQuote) {
+                    const client = clients.find(c => c.id === p.clientId);
+                    upcomingItems.push({
+                        type: 'Proyecto',
+                        id: p.id,
+                        clientId: p.clientId,
+                        projectId: p.id,
+                        closeDate: p.closeDate,
+                        clientName: client ? `${client.name} ${client.lastname}` : p.name,
+                        title: p.material ? `Proyecto: ${p.material}` : 'Proyecto en mapa',
+                        amount: null
+                    });
+                }
+            });
+            
+            // 3. Ordenar por fecha (más pronto primero)
+            upcomingItems.sort((a, b) => {
+                if (!a.closeDate) return 1;
+                if (!b.closeDate) return -1;
+                return new Date(a.closeDate) - new Date(b.closeDate);
+            });
+            
+            const list = document.getElementById('upcoming-closes-list');
+            if (upcomingItems.length === 0) {
+                list.innerHTML = '<p class="text-gray-500 italic text-sm">No hay proyectos ni cotizaciones pendientes de cierre.</p>';
                 return;
             }
-
-            list.innerHTML = clientStats.map((c, index) => {
-                let rightInfo = '';
-                if (sortBy === 'spent') {
-                    rightInfo = c.spent > 0 
-                        ? `<span class="text-sm font-bold text-emerald-600">$${c.spent.toFixed(2)}</span>` 
-                        : `<span class="text-xs text-gray-400">Sin compras</span>`;
-                } else if (sortBy === 'recent') {
-                    rightInfo = c.createdAt ? `<span class="text-xs text-gray-500">${new Date(c.createdAt).toLocaleDateString()}</span>` : '';
+            
+            list.innerHTML = upcomingItems.slice(0, 15).map(item => {
+                const days = daysRemaining(item.closeDate);
+                const color = getMarkerColorByDays(days);
+                let colorClass = 'bg-green-100 text-green-800';
+                if (color === 'orange') colorClass = 'bg-orange-100 text-orange-800';
+                if (color === 'red') colorClass = 'bg-red-100 text-red-800';
+                
+                let action = '';
+                if (item.type === 'Cotización') {
+                    action = `switchView('clients'); openClientDetail('${item.clientId}');`;
+                } else {
+                    action = `goToMapProject(${item.projectId});`;
                 }
-
+                
+                const dateStr = item.closeDate ? new Date(item.closeDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }) : 'Sin fecha';
+                
                 return `
-                <div onclick="openClientDetail('${c.id}'); switchView('clients');" class="flex items-center justify-between p-3 border rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
-                    <div class="flex items-center gap-3 min-w-0">
-                        <span class="w-8 h-8 flex items-center justify-center bg-indigo-100 text-indigo-700 rounded-full text-xs font-bold flex-shrink-0">${index + 1}</span>
-                        <div class="min-w-0">
-                            <div class="font-semibold text-gray-900 truncate">${c.name} ${c.lastname}</div>
-                            <div class="text-xs text-gray-500 truncate">${c.phone}</div>
+                <div onclick="${action}" class="flex items-center justify-between p-3 border rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
+                    <div class="min-w-0 flex-1">
+                        <div class="font-semibold text-gray-900 truncate">${item.clientName}</div>
+                        <div class="text-sm text-gray-500 truncate">
+                            ${item.type === 'Cotización' ? '📄' : '🗺️'} ${item.title} ${item.amount ? `- $${parseFloat(item.amount).toFixed(2)}` : ''}
                         </div>
                     </div>
-                    ${rightInfo}
+                    <div class="text-right flex-shrink-0 ml-4">
+                        <span class="text-xs font-bold px-2 py-1 rounded-full ${colorClass}">${days} días</span>
+                        <div class="text-xs text-gray-400 mt-1">📅 ${dateStr}</div>
+                    </div>
                 </div>`;
             }).join('');
         }
@@ -940,7 +964,6 @@
 
             const allQuotes = JSON.parse(localStorage.getItem('quotes') || '[]');
             
-            // 1. Proyectos en mapa
             const linkedProjects = JSON.parse(localStorage.getItem('projects') || '[]').filter(p => p.clientId === c.id);
             linkedProjects.sort((a, b) => daysRemaining(a.closeDate) - daysRemaining(b.closeDate));
             
@@ -977,12 +1000,10 @@
                 projectsListContainer.innerHTML = `<p class="text-sm text-gray-500 italic">Este cliente no tiene proyectos asociados en el mapa.</p>`;
             }
 
-            // 2. Separar Cotizaciones
             const clientQuotes = allQuotes.filter(q => q.clientId === c.id);
             const openQuotes = clientQuotes.filter(q => q.status !== 'cerrada');
             const closedQuotes = clientQuotes.filter(q => q.status === 'cerrada');
 
-            // Renderizar Abiertas
             const openQuotesContainer = document.getElementById('view-open-quotes-list');
             if (openQuotes.length > 0) {
                 openQuotesContainer.innerHTML = openQuotes.map(q => {
@@ -1019,7 +1040,6 @@
                 openQuotesContainer.innerHTML = `<p class="text-sm text-gray-500 italic">No hay cotizaciones abiertas.</p>`;
             }
 
-            // Renderizar Cerradas (Historial)
             const closedQuotesContainer = document.getElementById('view-closed-quotes-list');
             if (closedQuotes.length > 0) {
                 closedQuotesContainer.innerHTML = closedQuotes.map(q => {
@@ -1042,7 +1062,6 @@
                 closedQuotesContainer.innerHTML = `<p class="text-sm text-gray-500 italic">Este cliente aún no tiene compras registradas.</p>`;
             }
 
-            // 3. Estadísticas del Cliente
             const statsContainer = document.getElementById('view-client-stats');
             if (closedQuotes.length > 0) {
                 const productCounts = {};
@@ -1411,7 +1430,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             initializeCategories();
             loadAndDisplayClients();
-            switchView('home'); // Cargar inicio por defecto
+            switchView('home');
 
             document.getElementById('cancelQuoteBtn').onclick = closeQuoteModal;
             document.getElementById('saveQuoteBtn').onclick = saveQuote;
