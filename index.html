@@ -1269,7 +1269,6 @@
                     removeMarkerFromMap(id);
                 }
             }
-            // El de quote se maneja internamente en el click event para evitar loops
         }
 
         window.reopenItem = function(type, id) {
@@ -1290,7 +1289,6 @@
                     projects[i].lossReason = null;
                     projects[i].closedAt = null;
                     saveProjects(projects);
-                    // Volver a poner en mapa
                     createMarker(projects[i]);
                 }
             }
@@ -1702,7 +1700,7 @@
             const marker = L.circleMarker([p.lat, p.lng], { radius: 9, color, fillColor: color, fillOpacity: 0.9 }).addTo(map);
             markersMap.set(p.id, marker);
             marker.bindPopup(`
-                <div style="min-width:260px;font-family:Inter,sans-serif">
+                <div style="min-width:280px;font-family:Inter,sans-serif">
                     <div style="background:${bg};color:#000;padding:8px;border-radius:8px;font-weight:700;text-align:center;font-size:15px;margin-bottom:10px;">Faltan ${days} días</div>
                     <div style="font-size:18px;font-weight:800;margin-bottom:8px">${p.name}</div>
                     <div style="margin-bottom:6px">📞 <a href="tel:${p.phone}" style="color:#2563eb;font-weight:600">Llamar</a> &nbsp;|&nbsp; <a href="https://wa.me/${p.phone.replace(/[^0-9]/g,'')}" target="_blank" style="color:#16a34a;font-weight:600">WhatsApp</a></div>
@@ -1711,8 +1709,9 @@
                     <div style="font-size:13px;color:#374151;margin-bottom:6px">📍 ${p.address || 'Sin dirección'}</div>
                     <div style="font-size:13px;color:#374151;margin-bottom:10px">📝 ${p.notes || 'Sin notas'}</div>
                     <div style="display:flex;gap:8px">
-                        <button onclick="editProject(${p.id})" style="flex:1;padding:6px;font-size:13px;background:#2563eb;color:#fff;border-radius:6px">Editar</button>
-                        <button onclick="deleteProject(${p.id})" style="flex:1;padding:6px;font-size:13px;background:#dc2626;color:#fff;border-radius:6px">Eliminar</button>
+                        <button onclick="editProject(${p.id})" style="flex:1;padding:6px;font-size:12px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;">Editar</button>
+                        <button onclick="deleteProject(${p.id})" style="flex:1;padding:6px;font-size:12px;background:#dc2626;color:#fff;border:none;border-radius:6px;cursor:pointer;">Eliminar</button>
+                        <button onclick="shareProject(${p.id})" style="flex:1;padding:6px;font-size:12px;background:#10b981;color:#fff;border:none;border-radius:6px;cursor:pointer;">Compartir</button>
                     </div>
                 </div>
             `);
@@ -1747,6 +1746,46 @@
                 projectListDiv.appendChild(item);
             });
         }
+
+        // --- FUNCIONES DE COMPARTIR Y GUARDAR PUNTOS ---
+        window.shareProject = function(id) {
+            const p = getStoredProjects().find(x => x.id === id);
+            if (!p) return;
+
+            let message = `*Detalles del Proyecto*\n`;
+            message += `👤 *Cliente:* ${p.name}\n`;
+            message += `📞 *Teléfono:* ${p.phone}\n`;
+            if (p.material) message += `🧱 *Material:* ${p.material}\n`;
+            if (p.address) message += `📍 *Dirección:* ${p.address}\n`;
+            if (p.notes) message += `📝 *Notas:* ${p.notes}\n`;
+
+            if (p.quoteId) {
+                const linkedQuote = JSON.parse(localStorage.getItem('quotes') || '[]').find(q => q.id == p.quoteId);
+                if (linkedQuote) {
+                    message += `\n*--- Cotización Asociada ---*\n`;
+                    message += `📄 *No. Cotización:* ${linkedQuote.quoteNumber || 'Sin número'}\n`;
+                    message += `💰 *Monto:* $${parseFloat(linkedQuote.amount).toFixed(2)}\n`;
+                    message += `🧱 *Materiales Cotizados:* ${linkedQuote.materials.join(', ')}\n`;
+                }
+            }
+
+            message += `\n*Ubicación en Google Maps:*\nhttps://www.google.com/maps?q=${p.lat},${p.lng}`;
+
+            if (navigator.share) {
+                navigator.share({
+                    title: `Proyecto de ${p.name}`,
+                    text: message,
+                    url: `https://www.google.com/maps?q=${p.lat},${p.lng}`
+                }).catch(err => console.log('Error sharing:', err));
+            } else {
+                navigator.clipboard.writeText(message).then(() => {
+                    showMessage('Información del proyecto copiada al portapapeles.');
+                }, (err) => {
+                    console.error('Error copying text: ', err);
+                    showMessage('No se pudo copiar la información.');
+                });
+            }
+        };
 
         function savePoint() {
             if (!selectedLatLng) return alert('Selecciona una ubicación');
