@@ -266,8 +266,8 @@
         </div>
     </div>
 
-    <!-- ================= MODALES PROYECTOS ================= -->
-    <!-- MODAL PUNTO -->
+    <!-- ================= MODALES PROYECTOS Y COTIZACIONES ================= -->
+    <!-- MODAL PUNTO (MAPA) -->
     <div id="pointModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-[2000] p-4">
         <div class="bg-white rounded-lg w-full max-w-md p-4 space-y-3 max-h-[90vh] overflow-y-auto">
             <h2 class="font-bold text-lg text-gray-800">Nuevo Punto</h2>
@@ -302,6 +302,62 @@
         <div id="projectList" class="flex-1 overflow-auto divide-y"></div>
     </div>
 
+    <!-- MODAL COTIZACIÓN -->
+    <div id="quoteModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-[2000] p-4">
+        <div class="bg-white rounded-lg w-full max-w-md p-4 space-y-4 max-h-[90vh] overflow-y-auto">
+            <h2 class="font-bold text-lg text-gray-800">Nueva Cotización</h2>
+            
+            <div class="relative">
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Cliente</label>
+                <input id="quoteClientSearch" class="w-full border rounded px-3 py-2 text-sm text-base" placeholder="🔍 Buscar cliente por nombre o teléfono">
+                <div id="quoteClientResults" class="absolute w-full bg-white border rounded mt-1 max-h-40 overflow-auto hidden z-50"></div>
+                <input type="hidden" id="quoteClientId">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Número de Cotización</label>
+                <input id="quoteNumber" type="text" class="w-full border rounded px-3 py-2 text-sm text-base" placeholder="Ej: COT-2025-001">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Material Cotizado (Selección múltiple)</label>
+                <div class="grid grid-cols-2 gap-2 bg-gray-50 p-3 rounded-lg border max-h-48 overflow-y-auto">
+                    <label class="flex items-center space-x-2 text-sm"><input type="checkbox" value="Zincalum" class="quote-material"> <span>Zincalum</span></label>
+                    <label class="flex items-center space-x-2 text-sm"><input type="checkbox" value="ColorAlum" class="quote-material"> <span>ColorAlum</span></label>
+                    <label class="flex items-center space-x-2 text-sm"><input type="checkbox" value="Aquiteja" class="quote-material"> <span>Aquiteja</span></label>
+                    <label class="flex items-center space-x-2 text-sm"><input type="checkbox" value="Thermotecho" class="quote-material"> <span>Thermotecho</span></label>
+                    <label class="flex items-center space-x-2 text-sm"><input type="checkbox" value="Metalmecanica GHT" class="quote-material"> <span>Metalmecanica GHT</span></label>
+                    <label class="flex items-center space-x-2 text-sm"><input type="checkbox" value="Metalmecanica Negra" class="quote-material"> <span>Metalmecanica Negra</span></label>
+                    <label class="flex items-center space-x-2 text-sm"><input type="checkbox" value="Mallamax" class="quote-material"> <span>Mallamax</span></label>
+                    <label class="flex items-center space-x-2 text-sm"><input type="checkbox" value="HierroMax" class="quote-material"> <span>HierroMax</span></label>
+                    <label class="flex items-center space-x-2 text-sm"><input type="checkbox" value="Hierro G40" class="quote-material"> <span>Hierro G40</span></label>
+                    <label class="flex items-center space-x-2 text-sm"><input type="checkbox" value="Accesorios de techo" class="quote-material"> <span>Accesorios de techo</span></label>
+                    <label class="flex items-center space-x-2 text-sm"><input type="checkbox" value="Canales y accesorios" class="quote-material"> <span>Canales y accesorios</span></label>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Monto de Cotización ($)</label>
+                <input id="quoteAmount" type="number" step="0.01" class="w-full border rounded px-3 py-2 text-sm text-base" placeholder="0.00">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Fecha Estimada de Cierre</label>
+                <input id="quoteCloseDate" type="date" class="w-full border rounded px-3 py-2 text-sm text-base">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Notas Adicionales</label>
+                <textarea id="quoteNotes" rows="3" class="w-full border rounded px-3 py-2 text-sm text-base" placeholder="Detalles extra..."></textarea>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2">
+                <button id="cancelQuoteBtn" class="text-sm px-3 py-2 text-gray-600">Cancelar</button>
+                <button id="saveQuoteBtn" class="text-sm px-4 py-2 bg-indigo-600 text-white rounded">Guardar Cotización</button>
+            </div>
+        </div>
+    </div>
+
     <!-- MESSAGE BOX -->
     <div id="message-box" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 z-[3000] items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 max-w-sm mx-auto text-center transform transition-all duration-300">
@@ -331,16 +387,14 @@
         function switchView(view) {
             const clientsView = document.getElementById('view-clients');
             const projectsView = document.getElementById('view-projects');
-            const fabAdd = document.getElementById('fab-add-container');
-            const fabList = document.getElementById('fab-list-container');
+            const fabQuote = document.getElementById('fab-quote-container');
             const navClients = document.getElementById('nav-clients');
             const navProjects = document.getElementById('nav-projects');
 
             if (view === 'clients') {
                 clientsView.classList.remove('hidden');
                 projectsView.classList.add('hidden');
-                fabAdd.classList.add('hidden');
-                fabList.classList.add('hidden');
+                fabQuote.classList.remove('hidden');
                 
                 navClients.classList.add('text-indigo-600', 'font-bold');
                 navClients.classList.remove('text-gray-600', 'font-medium');
@@ -349,8 +403,7 @@
             } else if (view === 'projects') {
                 clientsView.classList.add('hidden');
                 projectsView.classList.remove('hidden');
-                fabAdd.classList.remove('hidden');
-                fabList.classList.remove('hidden');
+                fabQuote.classList.add('hidden');
                 
                 navProjects.classList.add('text-indigo-600', 'font-bold');
                 navProjects.classList.remove('text-gray-600', 'font-medium');
@@ -609,7 +662,6 @@
             if (!c) return;
             currentClientId = id;
             if (!document.getElementById('clientViewModal')) {
-                // MODAL DE PERFIL AHORA ES FULLSCREEN EN MÓVIL
                 const html = `
                 <div id="clientViewModal" class="fixed inset-0 z-[100] hidden bg-black/60 backdrop-blur-sm p-0 md:p-4">
                     <div class="bg-white w-full max-w-lg h-full md:h-auto md:max-h-[90vh] md:rounded-2xl shadow-2xl flex flex-col overflow-hidden">
@@ -647,6 +699,11 @@
                                 <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wide">Proyectos Activos en Mapa</h3>
                                 <div id="view-projects-list" class="space-y-3"></div>
                             </div>
+
+                            <div class="space-y-3">
+                                <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wide">Cotizaciones Realizadas</h3>
+                                <div id="view-quotes-list" class="space-y-3"></div>
+                            </div>
                         </div>
 
                         <div class="flex justify-end gap-2 px-6 py-4 border-t bg-gray-50 flex-shrink-0">
@@ -663,7 +720,7 @@
             document.getElementById('view-address').textContent = c.address;
             document.getElementById('view-categories').textContent = (c.categories||[]).join(', ');
 
-            // Buscar proyectos asociados en el mapa
+            // Cargar Proyectos del Mapa
             const linkedProjects = JSON.parse(localStorage.getItem('projects') || '[]').filter(p => p.clientId === c.id);
             linkedProjects.sort((a, b) => daysRemaining(a.closeDate) - daysRemaining(b.closeDate));
             
@@ -691,11 +748,39 @@
                 projectsListContainer.innerHTML = `<p class="text-sm text-gray-500 italic">Este cliente no tiene proyectos asociados en el mapa.</p>`;
             }
 
+            // Cargar Cotizaciones
+            const linkedQuotes = JSON.parse(localStorage.getItem('quotes') || '[]').filter(q => q.clientId === c.id);
+            linkedQuotes.sort((a, b) => new Date(a.closeDate) - new Date(b.closeDate));
+            
+            const quotesListContainer = document.getElementById('view-quotes-list');
+            if (linkedQuotes.length > 0) {
+                quotesListContainer.innerHTML = linkedQuotes.map(q => {
+                    const days = daysRemaining(q.closeDate);
+                    const color = getMarkerColorByDays(days);
+                    let colorClass = 'bg-green-100 text-green-800';
+                    if (color === 'orange') colorClass = 'bg-orange-100 text-orange-800';
+                    if (color === 'red') colorClass = 'bg-red-100 text-red-800';
+
+                    return `
+                    <div class="rounded-xl bg-emerald-900 text-emerald-100 p-4 space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs ${colorClass} px-2 py-1 rounded-full font-bold">Cierre en ${days} días</span>
+                            <span class="text-xs bg-emerald-600 px-2 py-1 rounded-full font-bold">$${parseFloat(q.amount).toFixed(2)}</span>
+                        </div>
+                        <p><span class="font-medium text-emerald-300">Cotización No:</span> ${q.quoteNumber || 'N/A'}</p>
+                        <p><span class="font-medium text-emerald-300">Materiales:</span> ${q.materials.join(', ')}</p>
+                        <p><span class="font-medium text-emerald-300">Cierre:</span> ${q.closeDate || 'Sin fecha'}</p>
+                        <p><span class="font-medium text-emerald-300">Notas:</span> ${q.notes || 'Sin notas'}</p>
+                    </div>`;
+                }).join('');
+            } else {
+                quotesListContainer.innerHTML = `<p class="text-sm text-gray-500 italic">Este cliente no tiene cotizaciones registradas.</p>`;
+            }
+
             document.getElementById('clientViewModal').classList.remove('hidden');
             document.getElementById('clientViewModal').classList.add('flex');
         }
         
-        // Función para saltar al mapa desde el perfil del cliente
         window.goToMapProject = function(projectId) {
             closeClientViewModal();
             switchView('projects');
@@ -944,13 +1029,15 @@
         }
         document.addEventListener('click', e => {
             if (!clientResults.contains(e.target) && e.target !== clientSearchInput) clientResults.classList.add('hidden');
-            // Cerrar modales al hacer clic fuera
+            if (!quoteClientResults.contains(e.target) && e.target !== quoteClientSearch) quoteClientResults.classList.add('hidden');
+            
             if (e.target.id === 'add-client-modal') closeAddClientModal();
             if (e.target.id === 'client-detail-modal') closeClientDetailModal();
             if (e.target.id === 'categories-modal') closeCategoriesModal();
             if (e.target.id === 'edit-category-modal') closeEditCategoryModal();
             if (e.target.id === 'pointModal') closeModal();
             if (e.target.id === 'clientViewModal') closeClientViewModal();
+            if (e.target.id === 'quoteModal') closeQuoteModal();
         });
         function closeModal() {
             pModal.classList.add('hidden');
@@ -961,9 +1048,6 @@
 
         clientSearch.addEventListener('input', e => loadAndDisplayClients(e.target.value));
 
-        // ----------------------------------------------------
-        // INICIALIZACIÓN DEL MAPA
-        // ----------------------------------------------------
         document.addEventListener('DOMContentLoaded', () => {
             initializeCategories();
             loadAndDisplayClients();
@@ -975,7 +1059,6 @@
             resetModal();
             startLiveLocation();
 
-            // Event listeners de Proyectos
             document.getElementById('openModalBtn').onclick = () => { resetModal(); openModal(); };
             document.getElementById('cancelBtn').onclick = () => { resetModal(); closeModal(); };
             document.getElementById('openListBtn').onclick = () => { renderProjectList(); projectListModal.classList.remove('hidden'); };
@@ -996,6 +1079,11 @@
                 map.getContainer().style.cursor = 'crosshair';
             };
             document.getElementById('savePointBtn').onclick = savePoint;
+
+            // Eventos FAB Cotizaciones
+            document.getElementById('openQuoteFabBtn').onclick = () => openQuoteModal();
+            document.getElementById('cancelQuoteBtn').onclick = closeQuoteModal;
+            document.getElementById('saveQuoteBtn').onclick = saveQuote;
         });
 
         function startLiveLocation() {
@@ -1096,7 +1184,6 @@
             if (!selectedLatLng) return alert('Selecciona una ubicación');
             let projects = getStoredProjects();
             
-            // Si hay un cliente asociado, agregar la categoría "Proyectos" a su perfil
             const linkedClientId = clientIdInput.value;
             if (linkedClientId) {
                 let clients = JSON.parse(localStorage.getItem('clients') || '[]');
@@ -1159,6 +1246,95 @@
             const m = markersMap.get(id);
             if (m) { m.remove(); markersMap.delete(id); }
         };
+
+        // ----------------------------------------------------
+        // COTIZACIONES LÓGICA
+        // ----------------------------------------------------
+        const quoteModal = document.getElementById('quoteModal');
+        const quoteClientSearch = document.getElementById('quoteClientSearch');
+        const quoteClientResults = document.getElementById('quoteClientResults');
+
+        quoteClientSearch.addEventListener('input', () => {
+            const q = quoteClientSearch.value.toLowerCase().trim();
+            quoteClientResults.innerHTML = '';
+            if (!q) { quoteClientResults.classList.add('hidden'); return; }
+            const matches = getClients().filter(c => `${c.name} ${c.lastname||''} ${c.phone}`.toLowerCase().includes(q));
+            if (!matches.length) {
+                quoteClientResults.innerHTML = `<div class="px-3 py-2 text-sm text-gray-500">Sin resultados</div>`;
+                quoteClientResults.classList.remove('hidden');
+                return;
+            }
+            matches.forEach(c => {
+                const item = document.createElement('div');
+                item.className = 'px-3 py-2 text-sm hover:bg-gray-100 cursor-pointer';
+                item.innerHTML = `<div class="font-medium">${c.name} ${c.lastname||''}</div><div class="text-xs text-gray-500">📞 ${c.phone}</div>`;
+                item.onclick = () => selectQuoteClient(c);
+                quoteClientResults.appendChild(item);
+            });
+            quoteClientResults.classList.remove('hidden');
+        });
+
+        function selectQuoteClient(c) {
+            document.getElementById('quoteClientId').value = c.id;
+            quoteClientSearch.value = `${c.name} ${c.lastname||''}`.trim();
+            quoteClientResults.classList.add('hidden');
+        }
+
+        function openQuoteModal(clientId = null) {
+            document.getElementById('quoteModal').classList.remove('hidden');
+            document.getElementById('quoteModal').classList.add('flex');
+            
+            // Reset fields
+            quoteClientSearch.value = '';
+            document.getElementById('quoteClientId').value = '';
+            document.getElementById('quoteNumber').value = '';
+            document.querySelectorAll('.quote-material').forEach(cb => cb.checked = false);
+            document.getElementById('quoteAmount').value = '';
+            document.getElementById('quoteCloseDate').value = '';
+            document.getElementById('quoteNotes').value = '';
+
+            if (clientId) {
+                const c = allClients.find(x => x.id === clientId);
+                if (c) selectQuoteClient(c);
+            }
+        }
+
+        function closeQuoteModal() {
+            document.getElementById('quoteModal').classList.add('hidden');
+            document.getElementById('quoteModal').classList.remove('flex');
+        }
+
+        function saveQuote() {
+            const clientId = document.getElementById('quoteClientId').value;
+            if (!clientId) return alert('Por favor, selecciona un cliente de la lista.');
+
+            const materials = Array.from(document.querySelectorAll('.quote-material:checked')).map(cb => cb.value);
+            if (materials.length === 0) return alert('Selecciona al menos un material.');
+
+            const quoteData = {
+                id: Date.now(),
+                clientId: clientId,
+                quoteNumber: document.getElementById('quoteNumber').value.trim(),
+                materials: materials,
+                amount: document.getElementById('quoteAmount').value || '0',
+                closeDate: document.getElementById('quoteCloseDate').value,
+                notes: document.getElementById('quoteNotes').value.trim(),
+                createdAt: new Date().toISOString()
+            };
+
+            let quotes = JSON.parse(localStorage.getItem('quotes') || '[]');
+            quotes.push(quoteData);
+            localStorage.setItem('quotes', JSON.stringify(quotes));
+
+            closeQuoteModal();
+            showMessage('Cotización guardada correctamente en el perfil del cliente.');
+            
+            // Si el modal del cliente está abierto, refrescarlo
+            if (document.getElementById('clientViewModal').classList.contains('flex')) {
+                openClientDetail(clientId);
+            }
+        }
+
     </script>
 </body>
 
