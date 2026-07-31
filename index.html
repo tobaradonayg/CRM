@@ -138,6 +138,19 @@
                     <div id="client-ranking-list" class="space-y-2 max-h-[400px] overflow-y-auto pr-2"></div>
                 </div>
             </div>
+
+            <!-- Seguimientos de Hoy -->
+            <div class="bg-white rounded-2xl shadow-md p-6 mb-8">
+                <h3 class="text-lg font-bold mb-4 text-gray-800">Seguimientos de Hoy y Vencidos</h3>
+                <div id="follow-ups-list" class="space-y-3"></div>
+            </div>
+
+            <!-- NUEVO: Clientes Inactivos (Fantasmas) -->
+            <div class="bg-white rounded-2xl shadow-md p-6 mb-8">
+                <h3 class="text-lg font-bold mb-4 text-gray-800">Clientes Inactivos (Fantasmas)</h3>
+                <p class="text-xs text-gray-500 mb-4">Clientes sin contacto, cotización ni visita en los últimos 90 días.</p>
+                <div id="inactive-clients-list" class="space-y-3"></div>
+            </div>
         </div>
     </div>
 
@@ -281,6 +294,17 @@
                 <div><label for="edit-client-lastname" class="block text-sm font-medium text-gray-700 mb-1">Apellidos</label><input type="text" id="edit-client-lastname" required class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 shadow-sm text-base"></div>
                 <div><label for="edit-client-phone" class="block text-sm font-medium text-gray-700 mb-1">Teléfono</label><input type="tel" id="edit-client-phone" required class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 shadow-sm text-base"></div>
                 <div><label for="edit-client-address" class="block text-sm font-medium text-gray-700 mb-1">Dirección</label><textarea id="edit-client-address" rows="3" required class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 shadow-sm text-base"></textarea></div>
+                
+                <!-- NUEVO: Estado de Contactabilidad -->
+                <div>
+                    <label for="edit-client-status" class="block text-sm font-medium text-gray-700 mb-1">Estado de Contacto</label>
+                    <select id="edit-client-status" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 shadow-sm text-base bg-white">
+                        <option value="verde">🟢 Contactable</option>
+                        <option value="amarillo">🟡 Difícil de contactar</option>
+                        <option value="rojo">🔴 Número inválido / Perdido</option>
+                    </select>
+                </div>
+
                 <div><label class="block text-sm font-medium text-gray-700 mb-2">Categorías</label><div id="edit-categories-container" class="space-y-3 bg-gray-50 p-4 rounded-xl border border-gray-200"></div></div>
                 <div class="pt-2 flex gap-3">
                     <button type="submit" class="flex-1 bg-indigo-600 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg hover:bg-indigo-700 hover:shadow-xl transform transition hover:scale-[1.02] duration-200 flex justify-center items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>Actualizar</button>
@@ -295,7 +319,7 @@
         <div class="bg-white w-full max-w-md rounded-2xl shadow-xl p-6 space-y-6 max-h-[90vh] overflow-y-auto">
             <div>
                 <h2 class="text-xl font-bold text-gray-800">Copia de Seguridad Completa</h2>
-                <p class="text-sm text-gray-600 mt-1">Descarga todos tus datos (clientes, proyectos, cotizaciones, historial) en un archivo JSON, o restáuralo desde un backup.</p>
+                <p class="text-sm text-gray-600 mt-1">Descarga todos tus datos (clientes, proyectos, cotizaciones, historial, bitácora) en un archivo JSON, o restáuralo desde un backup.</p>
                 <div class="mt-4 space-y-3">
                     <button onclick="exportBackupJson()" class="w-full p-3 rounded-lg bg-slate-800 text-white font-semibold hover:bg-slate-700 transition flex items-center justify-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
@@ -363,8 +387,13 @@
             <h2 class="font-bold text-lg">📋 Proyectos</h2>
             <button id="closeListBtn" class="text-red-600 font-semibold text-sm">Cerrar</button>
         </div>
-        <div class="p-4 border-b flex-shrink-0">
+        <div class="p-4 border-b flex-shrink-0 space-y-2">
             <input id="projectSearch" class="w-full border rounded px-3 py-2 text-sm text-base" placeholder="Buscar por nombre, teléfono, material o dirección">
+            <!-- NUEVO: Filtro de no visitados -->
+            <label class="flex items-center space-x-2 text-sm text-gray-700 cursor-pointer">
+                <input type="checkbox" id="unvisitedFilter" class="w-4 h-4 text-indigo-600 rounded" onchange="renderProjectList(document.getElementById('projectSearch').value)">
+                <span>Mostrar solo proyectos NO visitados</span>
+            </label>
         </div>
         <div id="projectList" class="flex-1 overflow-auto divide-y"></div>
     </div>
@@ -441,6 +470,36 @@
             <div class="flex justify-end gap-2">
                 <button id="cancelLossBtn" class="text-sm px-3 py-2 text-gray-600">Cancelar</button>
                 <button id="confirmLossBtn" class="text-sm px-4 py-2 bg-red-600 text-white rounded">Confirmar Pérdida</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL BITÁCORA DE INTERACCIONES -->
+    <div id="activityModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-[2000] p-4">
+        <div class="bg-white rounded-lg w-full max-w-md p-4 space-y-3 max-h-[90vh] overflow-y-auto">
+            <h2 class="font-bold text-lg text-gray-800">Registrar Interacción</h2>
+            <input type="hidden" id="activityClientId">
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Tipo de Contacto</label>
+                <select id="activityType" class="w-full border rounded px-3 py-2 text-sm text-base bg-white">
+                    <option value="Llamada">Llamada</option>
+                    <option value="WhatsApp">WhatsApp</option>
+                    <option value="Visita">Visita</option>
+                    <option value="Correo">Correo</option>
+                    <option value="Otro">Otro</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Notas / Resultado</label>
+                <textarea id="activityNote" rows="3" class="w-full border rounded px-3 py-2 text-sm text-base" placeholder="Ej: No contestó, le interesan los precios..."></textarea>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Próximo Seguimiento (Opcional)</label>
+                <input id="activityNextDate" type="date" class="w-full border rounded px-3 py-2 text-sm text-base">
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+                <button id="cancelActivityBtn" class="text-sm px-3 py-2 text-gray-600">Cancelar</button>
+                <button id="saveActivityBtn" class="text-sm px-4 py-2 bg-indigo-600 text-white rounded">Guardar</button>
             </div>
         </div>
     </div>
@@ -628,6 +687,8 @@
 
             renderUpcomingCloses();
             renderClientRanking();
+            renderFollowUps();
+            renderInactiveClients();
         }
 
         function renderUpcomingCloses() {
@@ -761,6 +822,116 @@
             }).join('');
         }
 
+        // Renderizar Seguimientos
+        function renderFollowUps() {
+            const activities = JSON.parse(localStorage.getItem('activities') || '[]');
+            const clients = JSON.parse(localStorage.getItem('clients') || '[]');
+            const today = new Date(); today.setHours(0,0,0,0);
+            
+            const latestActivities = {};
+            activities.forEach(a => {
+                if (!latestActivities[a.clientId] || new Date(a.createdAt) > new Date(latestActivities[a.clientId].createdAt)) {
+                    latestActivities[a.clientId] = a;
+                }
+            });
+
+            const followUps = Object.values(latestActivities).filter(a => {
+                if (!a.nextDate) return false;
+                const next = new Date(a.nextDate); next.setHours(0,0,0,0);
+                return next <= today;
+            });
+
+            followUps.sort((a, b) => new Date(a.nextDate) - new Date(b.nextDate));
+
+            const list = document.getElementById('follow-ups-list');
+            if (followUps.length === 0) {
+                list.innerHTML = '<p class="text-gray-500 italic text-sm">No hay seguimientos pendientes para hoy. ¡Bien hecho!</p>';
+                return;
+            }
+
+            list.innerHTML = followUps.map(a => {
+                const client = clients.find(c => c.id === a.clientId);
+                const clientName = client ? `${client.name} ${client.lastname}` : 'Cliente desconocido';
+                const nextDate = new Date(a.nextDate); nextDate.setHours(0,0,0,0);
+                const diffDays = Math.floor((today - nextDate) / 86400000);
+                
+                let badgeClass = 'bg-blue-100 text-blue-800';
+                let badgeText = 'Hoy';
+                if (diffDays > 0) {
+                    badgeClass = 'bg-red-100 text-red-800';
+                    badgeText = `Vencido (${diffDays}d)`;
+                }
+
+                return `
+                <div onclick="switchView('clients'); openClientDetail('${a.clientId}');" class="flex items-center justify-between p-3 border rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
+                    <div class="min-w-0 flex-1">
+                        <div class="font-semibold text-gray-900 truncate">${clientName}</div>
+                        <div class="text-sm text-gray-500 truncate">
+                            Último: ${a.type} - ${a.note || 'Sin notas'}
+                        </div>
+                    </div>
+                    <div class="text-right flex-shrink-0 ml-4">
+                        <span class="text-xs font-bold px-2 py-1 rounded-full ${badgeClass}">${badgeText}</span>
+                        <div class="text-xs text-gray-400 mt-1">📅 ${nextDate.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}</div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        // NUEVO: Renderizar Clientes Inactivos
+        function renderInactiveClients() {
+            const clients = JSON.parse(localStorage.getItem('clients') || '[]');
+            const quotes = JSON.parse(localStorage.getItem('quotes') || '[]');
+            const projects = JSON.parse(localStorage.getItem('projects') || '[]');
+            const activities = JSON.parse(localStorage.getItem('activities') || '[]');
+            const now = new Date();
+            const ninetyDaysAgo = new Date(now.setDate(now.getDate() - 90));
+            
+            let inactiveClients = clients.filter(c => {
+                if (c.contactStatus === 'rojo') return false; // No mostrar inválidos aquí
+                
+                const clientQuotes = quotes.filter(q => q.clientId === c.id);
+                const clientProjects = projects.filter(p => p.clientId === c.id);
+                const clientActivities = activities.filter(a => a.clientId === c.id);
+                
+                let lastActivityDate = new Date(c.createdAt || 0);
+                
+                clientQuotes.forEach(q => { 
+                    const d = new Date(q.updatedAt || q.createdAt);
+                    if (d > lastActivityDate) lastActivityDate = d;
+                });
+                clientProjects.forEach(p => { 
+                    const d = new Date(p.createdAt);
+                    if (d > lastActivityDate) lastActivityDate = d;
+                });
+                clientActivities.forEach(a => { 
+                    const d = new Date(a.createdAt);
+                    if (d > lastActivityDate) lastActivityDate = d;
+                });
+                
+                return lastActivityDate < ninetyDaysAgo;
+            });
+
+            const list = document.getElementById('inactive-clients-list');
+            if (inactiveClients.length === 0) {
+                list.innerHTML = '<p class="text-gray-500 italic text-sm">No hay clientes inactivos. ¡Estás al día con todos!</p>';
+                return;
+            }
+
+            list.innerHTML = inactiveClients.slice(0, 15).map(c => {
+                return `
+                <div onclick="switchView('clients'); openClientDetail('${c.id}');" class="flex items-center justify-between p-3 border rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
+                    <div class="min-w-0 flex-1">
+                        <div class="font-semibold text-gray-900 truncate">${c.name} ${c.lastname}</div>
+                        <div class="text-sm text-gray-500 truncate">${c.phone}</div>
+                    </div>
+                    <div class="text-right flex-shrink-0 ml-4">
+                        <span class="text-xs font-bold px-2 py-1 rounded-full bg-yellow-100 text-yellow-800">Fantasma</span>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
         // ----------------------------------------------------
         // CLIENTES: MODALES Y CRUD
         // ----------------------------------------------------
@@ -889,6 +1060,7 @@
                 phone: document.getElementById('client-phone').value.trim(),
                 address: document.getElementById('client-address').value.trim(),
                 categories: selectedCategories,
+                contactStatus: 'verde', // NUEVO: Por defecto verde
                 createdAt: new Date().toISOString()
             };
             try {
@@ -925,9 +1097,18 @@
                     card.onclick = () => openClientDetail(c.id);
                     const left = document.createElement('div');
                     left.className = 'flex-1 flex flex-col gap-1 min-w-0';
+                    
+                    // NUEVO: Status Dot
+                    let statusColor = 'bg-green-500';
+                    if (c.contactStatus === 'amarillo') statusColor = 'bg-yellow-500';
+                    if (c.contactStatus === 'rojo') statusColor = 'bg-red-500';
+
                     if (c.categories?.length) {
                         const cats = document.createElement('div');
-                        cats.className = 'flex gap-1 flex-wrap';
+                        cats.className = 'flex gap-1 flex-wrap items-center';
+                        const dot = document.createElement('span');
+                        dot.className = `w-2 h-2 rounded-full ${statusColor} mr-1`;
+                        cats.appendChild(dot);
                         c.categories.forEach(cn => {
                             const b = document.createElement('span');
                             b.className = 'px-1 rounded-full text-[8.5px] font-medium leading-none';
@@ -937,7 +1118,15 @@
                             cats.appendChild(b);
                         });
                         left.appendChild(cats);
+                    } else {
+                        const cats = document.createElement('div');
+                        cats.className = 'flex items-center';
+                        const dot = document.createElement('span');
+                        dot.className = `w-2 h-2 rounded-full ${statusColor} mr-1`;
+                        cats.appendChild(dot);
+                        left.appendChild(cats);
                     }
+
                     const nm = document.createElement('div');
                     nm.className = 'font-semibold text-gray-900 truncate';
                     nm.textContent = `${c.name} ${c.lastname}`;
@@ -1014,6 +1203,15 @@
                             <div class="space-y-3">
                                 <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wide">Proyectos/Cotizaciones Perdidas</h3>
                                 <div id="view-lost-list" class="space-y-3"></div>
+                            </div>
+
+                            <!-- BITÁCORA -->
+                            <div class="space-y-3">
+                                <div class="flex justify-between items-center">
+                                    <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wide">Bitácora de Interacciones</h3>
+                                    <button onclick="openActivityModal()" class="text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded text-white font-medium">+ Registrar</button>
+                                </div>
+                                <div id="view-activities-list" class="space-y-3"></div>
                             </div>
 
                             <div class="space-y-3">
@@ -1180,6 +1378,32 @@
             if (lostHtml === '') lostHtml = '<p class="text-sm text-gray-500 italic">No hay registros de pérdidas.</p>';
             lostList.innerHTML = lostHtml;
 
+            // 4. Bitácora de Interacciones
+            const activitiesListContainer = document.getElementById('view-activities-list');
+            const clientActivities = JSON.parse(localStorage.getItem('activities') || '[]').filter(a => a.clientId === c.id);
+            clientActivities.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); // Más nuevo primero
+
+            if (clientActivities.length > 0) {
+                activitiesListContainer.innerHTML = clientActivities.map(a => {
+                    const date = new Date(a.createdAt).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+                    let nextActionHtml = '';
+                    if (a.nextDate) {
+                        nextActionHtml = `<p class="mt-1 text-indigo-300 font-medium">⏭️ Próximo: ${new Date(a.nextDate).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}</p>`;
+                    }
+                    return `
+                    <div class="rounded-xl bg-gray-800 text-gray-100 p-4 space-y-1">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs bg-indigo-500 px-2 py-1 rounded-full font-bold text-white">${a.type}</span>
+                            <span class="text-xs text-gray-400">${date}</span>
+                        </div>
+                        <p class="text-sm mt-2">${a.note || 'Sin notas'}</p>
+                        ${nextActionHtml}
+                    </div>`;
+                }).join('');
+            } else {
+                activitiesListContainer.innerHTML = `<p class="text-sm text-gray-500 italic">Aún no hay interacciones registradas.</p>`;
+            }
+
             // Estadísticas (Solo ganadas)
             const statsContainer = document.getElementById('view-client-stats');
             if (wonQuotes.length > 0) {
@@ -1205,6 +1429,46 @@
 
             document.getElementById('clientViewModal').classList.remove('hidden');
             document.getElementById('clientViewModal').classList.add('flex');
+        }
+
+        // Lógica Bitácora
+        window.openActivityModal = function() {
+            if (!currentClientId) return;
+            document.getElementById('activityClientId').value = currentClientId;
+            document.getElementById('activityType').value = 'Llamada';
+            document.getElementById('activityNote').value = '';
+            document.getElementById('activityNextDate').value = '';
+            document.getElementById('activityModal').classList.remove('hidden');
+            document.getElementById('activityModal').classList.add('flex');
+        }
+
+        function closeActivityModal() {
+            document.getElementById('activityModal').classList.add('hidden');
+            document.getElementById('activityModal').classList.remove('flex');
+        }
+
+        function saveActivity() {
+            const clientId = document.getElementById('activityClientId').value;
+            const type = document.getElementById('activityType').value;
+            const note = document.getElementById('activityNote').value.trim();
+            const nextDate = document.getElementById('activityNextDate').value;
+
+            const activity = {
+                id: Date.now(),
+                clientId,
+                type,
+                note,
+                nextDate: nextDate || null,
+                createdAt: new Date().toISOString()
+            };
+
+            let activities = JSON.parse(localStorage.getItem('activities') || '[]');
+            activities.push(activity);
+            localStorage.setItem('activities', JSON.stringify(activities));
+
+            closeActivityModal();
+            showMessage('Interacción registrada correctamente.');
+            if (currentClientId) openClientDetail(currentClientId); // Refrescar perfil
         }
         
         // --- MANEJO DE ESTADOS (GANAR, PERDER, REABRIR) ---
@@ -1367,6 +1631,10 @@
             document.getElementById('edit-client-lastname').value = c.lastname;
             document.getElementById('edit-client-phone').value = c.phone;
             document.getElementById('edit-client-address').value = c.address;
+            
+            // NUEVO: Cargar estado de contacto
+            document.getElementById('edit-client-status').value = c.contactStatus || 'verde';
+
             const cont = document.getElementById('edit-categories-container');
             cont.innerHTML = '';
             categories.forEach(cat => {
@@ -1388,7 +1656,9 @@
                 lastname: document.getElementById('edit-client-lastname').value.trim(),
                 phone: document.getElementById('edit-client-phone').value.trim(),
                 address: document.getElementById('edit-client-address').value.trim(),
-                categories: selCats, updatedAt: new Date().toISOString()
+                categories: selCats, 
+                contactStatus: document.getElementById('edit-client-status').value, // NUEVO
+                updatedAt: new Date().toISOString()
             };
             let clients = JSON.parse(localStorage.getItem('clients') || '[]');
             const i = clients.findIndex(c => c.id === id);
@@ -1425,12 +1695,13 @@
 
         function exportBackupJson() {
             const data = {
-                appVersion: "2.0",
+                appVersion: "2.2",
                 exportedAt: new Date().toISOString(),
                 clients: JSON.parse(localStorage.getItem('clients') || '[]'),
                 categories: JSON.parse(localStorage.getItem('categories') || '[]'),
                 projects: JSON.parse(localStorage.getItem('projects') || '[]'),
                 quotes: JSON.parse(localStorage.getItem('quotes') || '[]'),
+                activities: JSON.parse(localStorage.getItem('activities') || '[]'), 
                 messageTemplate: localStorage.getItem('messageTemplate') || ''
             };
             const jsonStr = JSON.stringify(data, null, 2);
@@ -1464,6 +1735,7 @@
                     localStorage.setItem('categories', JSON.stringify(data.categories || []));
                     localStorage.setItem('projects', JSON.stringify(data.projects));
                     localStorage.setItem('quotes', JSON.stringify(data.quotes));
+                    localStorage.setItem('activities', JSON.stringify(data.activities || [])); 
                     if (data.messageTemplate) localStorage.setItem('messageTemplate', data.messageTemplate);
 
                     // Refresh UI
@@ -1676,6 +1948,7 @@
             if (e.target.id === 'pointModal') closeModal();
             if (e.target.id === 'clientViewModal') closeClientViewModal();
             if (e.target.id === 'quoteModal') closeQuoteModal();
+            if (e.target.id === 'activityModal') closeActivityModal(); 
         });
         function closeModal() {
             pModal.classList.add('hidden');
@@ -1728,6 +2001,8 @@
 
             document.getElementById('cancelQuoteBtn').onclick = closeQuoteModal;
             document.getElementById('saveQuoteBtn').onclick = saveQuote;
+            document.getElementById('cancelActivityBtn').onclick = closeActivityModal; 
+            document.getElementById('saveActivityBtn').onclick = saveActivity; 
         });
 
         function startLiveLocation() {
@@ -1773,7 +2048,7 @@
         function saveProjects(p) { localStorage.setItem('projects', JSON.stringify(p)); }
 
         function createMarker(p) {
-            if (p.status && p.status !== 'activo') return; // No mostrar en mapa si está ganado o perdido
+            if (p.status && p.status !== 'activo') return; 
 
             const days = daysRemaining(p.closeDate);
             const color = getMarkerColorByDays(days);
@@ -1787,6 +2062,11 @@
                 }
             }
 
+            // NUEVO: Botón de Visitado
+            let visitedHtml = p.visited ? 
+                '<div style="color:#10b981;font-weight:bold;margin-bottom:8px;font-size:13px">✓ Visitado</div>' : 
+                `<button onclick="markProjectVisited(${p.id})" style="width:100%;padding:6px;font-size:12px;background:#6b7280;color:#fff;border:none;border-radius:6px;cursor:pointer;margin-bottom:8px">Marcar como Visitado</button>`;
+
             const marker = L.circleMarker([p.lat, p.lng], { radius: 9, color, fillColor: color, fillOpacity: 0.9 }).addTo(map);
             markersMap.set(p.id, marker);
             marker.bindPopup(`
@@ -1798,6 +2078,7 @@
                     ${quoteInfo}
                     <div style="font-size:13px;color:#374151;margin-bottom:6px">📍 ${p.address || 'Sin dirección'}</div>
                     <div style="font-size:13px;color:#374151;margin-bottom:10px">📝 ${p.notes || 'Sin notas'}</div>
+                    ${visitedHtml}
                     <div style="display:flex;gap:8px">
                         <button onclick="editProject(${p.id})" style="flex:1;padding:6px;font-size:12px;background:#2563eb;color:#fff;border:none;border-radius:6px;cursor:pointer;">Editar</button>
                         <button onclick="deleteProject(${p.id})" style="flex:1;padding:6px;font-size:12px;background:#dc2626;color:#fff;border:none;border-radius:6px;cursor:pointer;">Eliminar</button>
@@ -1811,6 +2092,12 @@
 
         function renderProjectList(filter = '') {
             let projects = getStoredProjects().filter(p => p.status === 'activo' || !p.status);
+            const unvisitedOnly = document.getElementById('unvisitedFilter')?.checked;
+
+            if (unvisitedOnly) {
+                projects = projects.filter(p => !p.visited);
+            }
+
             projects.sort((a, b) => daysRemaining(a.closeDate) - daysRemaining(b.closeDate));
             projectListDiv.innerHTML = '';
             projects.filter(p => `${p.name} ${p.phone} ${p.material} ${p.address}`.toLowerCase().includes(filter.toLowerCase())).forEach(p => {
@@ -1821,7 +2108,10 @@
                 item.innerHTML = `
                     <div class="flex justify-between items-center">
                         <div>
-                            <div class="font-bold">${p.name}</div>
+                            <div class="font-bold flex items-center gap-2">
+                                ${p.visited ? '<span class="text-green-500 text-xs">✓</span>' : '<span class="text-gray-300 text-xs">○</span>'}
+                                ${p.name}
+                            </div>
                             <div class="text-sm text-gray-500">📞 ${p.phone}</div>
                             <div class="text-sm">🧱 ${p.material}</div>
                         </div>
@@ -1836,6 +2126,25 @@
                 projectListDiv.appendChild(item);
             });
         }
+
+        // NUEVO: Marcar proyecto como visitado
+        window.markProjectVisited = function(id) {
+            let projects = getStoredProjects();
+            const i = projects.findIndex(p => p.id === id);
+            if (i !== -1) {
+                projects[i].visited = true;
+                saveProjects(projects);
+                
+                // Refrescar marker
+                const oldM = markersMap.get(id);
+                if (oldM) { oldM.remove(); markersMap.delete(id); }
+                createMarker(projects[i]);
+                
+                // Volver a abrir el popup
+                const newM = markersMap.get(id);
+                if (newM) newM.openPopup();
+            }
+        };
 
         // --- FUNCIONES DE COMPARTIR Y GUARDAR PUNTOS ---
         window.shareProject = function(id) {
