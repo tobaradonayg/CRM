@@ -1,701 +1,1281 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CRM</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        body { 
-            -webkit-tap-highlight-color: transparent; 
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; 
-        }
-        
-        /* Menú Lateral */
-        #drawer-backdrop {
-            opacity: 0; pointer-events: none;
-            transition: opacity 0.3s ease;
-            background-color: rgba(15, 23, 42, 0.6); 
-        }
-        #drawer-backdrop.active { opacity: 1; pointer-events: auto; }
-        #side-drawer { transform: translateX(-100%); transition: transform 0.3s ease-in-out; }
-        #side-drawer.active { transform: translateX(0); }
-        
-        .nav-link {
-            border-left: 4px solid transparent;
-            transition: all 0.2s;
-            color: #475569; 
-        }
-        .nav-link.active {
-            background-color: #f1f5f9; 
-            border-left: 4px solid #1e3a8a; 
-            color: #1e3a8a; 
-            font-weight: 600;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Atlas — CRM</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  :root{
+    --bg:#FFFFFF;
+    --bg-subtle:#FAFAF9;
+    --ink:#18181B;
+    --muted:#71717A;
+    --line:#E7E7E5;
+    --accent:#1B4332;
+    --accent-hover:#142A1F;
+    --accent-soft:#F0F5F2;
+    --danger:#B91C1C;
+    --danger-soft:#FEF2F2;
+    --whatsapp:#25D366;
+    --whatsapp-hover:#1FB855;
+  }
+  *{ -webkit-tap-highlight-color: transparent; }
+  body{
+    font-family:'Inter',sans-serif;
+    background:#F2F2EF;
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+  }
+  .font-display{ font-family:'Bricolage Grotesque',sans-serif; font-optical-sizing:auto; }
 
-        .card {
-            background: #ffffff;
-            border: 1px solid #e2e8f0; 
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        }
+  .phone-shell{
+    max-width:440px; margin:0 auto; min-height:100vh;
+    position:relative; overflow:hidden; background:var(--bg);
+  }
+  @media (min-width:768px){
+    .phone-shell{ box-shadow:0 0 80px -20px rgba(0,0,0,0.12); }
+  }
 
-        /* Estilos del Modal */
-        #modal-backdrop {
-            opacity: 0; pointer-events: none;
-            transition: opacity 0.3s ease;
-            background-color: rgba(15, 23, 42, 0.7);
-            backdrop-filter: blur(4px);
-        }
-        #modal-backdrop.active { opacity: 1; pointer-events: auto; }
-        #modal-content {
-            transform: scale(0.9);
-            opacity: 0;
-            transition: all 0.3s ease;
-        }
-        #modal-backdrop.active #modal-content {
-            transform: scale(1);
-            opacity: 1;
-        }
-    </style>
+  .drawer{ transform:translateX(-100%); transition:transform .35s cubic-bezier(.32,.72,0,1); }
+  .drawer.open{ transform:translateX(0); }
+  .backdrop{ opacity:0; pointer-events:none; transition:opacity .3s ease; }
+  .backdrop.open{ opacity:1; pointer-events:auto; }
+
+  .modal{ transform:translateY(100%); transition:transform .4s cubic-bezier(.32,.72,0,1); }
+  .modal.open{ transform:translateY(0); }
+  .sheet{ transform:translateY(100%); transition:transform .3s cubic-bezier(.32,.72,0,1); }
+  .sheet.open{ transform:translateY(0); }
+
+  .view{ display:none; }
+  .view.active{ display:block; animation:fade .35s ease; }
+  @keyframes fade{ from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);} }
+
+  .toast{ transform:translateY(140%); transition:transform .4s cubic-bezier(.32,.72,0,1); }
+  .toast.show{ transform:translateY(0); }
+
+  .field-input{
+    width:100%; background:transparent; border:1.5px solid var(--line);
+    border-radius:14px; padding:14px 16px; font-size:16px; color:var(--ink);
+    transition:all .2s; font-family:inherit;
+  }
+  .field-input:focus{ outline:none; border-color:var(--ink); background:var(--bg-subtle); }
+  .field-input::placeholder{ color:#A1A1AA; }
+  .field-input.error{ border-color:var(--danger); animation:shake .4s; }
+  @keyframes shake{ 0%,100%{transform:translateX(0);} 25%{transform:translateX(-4px);} 75%{transform:translateX(4px);} }
+
+  .no-scrollbar::-webkit-scrollbar{ display:none; }
+  .no-scrollbar{ -ms-overflow-style:none; scrollbar-width:none; }
+
+  .avatar-grad{ background:linear-gradient(135deg, var(--accent), #2D6A4F); }
+
+  .grain{
+    background-image:radial-gradient(circle at 1px 1px, rgba(0,0,0,0.018) 1px, transparent 0);
+    background-size:24px 24px;
+  }
+
+  .empty-orb{ background:radial-gradient(circle at 30% 30%, #ECFDF5, #F0F5F2 70%); }
+
+  @keyframes pulse-dot{ 0%,100%{opacity:1;} 50%{opacity:.4;} }
+  .live-dot{ animation:pulse-dot 2s ease-in-out infinite; }
+
+  .press{ transition:transform .1s ease; }
+  .press:active{ transform:scale(.97); }
+
+  .fab{ box-shadow:0 10px 28px -8px rgba(27,67,50,.45), 0 4px 8px -4px rgba(27,67,50,.25); }
+
+  .ticker{ font-variant-numeric:tabular-nums; }
+
+  .nav-item{ transition:all .15s ease; }
+  .nav-item:hover{ background:var(--bg-subtle); }
+  .nav-item.active{ background:var(--ink); color:white; }
+  .nav-item.active .nav-icon{ color:white; }
+
+  .filter-chip{
+    border:1.5px solid var(--line); color:var(--muted);
+    transition:all .15s ease;
+  }
+  .filter-chip.active{ background:var(--ink); color:white; border-color:var(--ink); }
+
+  .search-bar:focus-within{ border-color:var(--ink); background:var(--bg); }
+
+  .stagger > * { animation: stag .4s ease both; }
+  .stagger > *:nth-child(1){ animation-delay:.02s; }
+  .stagger > *:nth-child(2){ animation-delay:.06s; }
+  .stagger > *:nth-child(3){ animation-delay:.1s; }
+  .stagger > *:nth-child(4){ animation-delay:.14s; }
+  .stagger > *:nth-child(5){ animation-delay:.18s; }
+  .stagger > *:nth-child(6){ animation-delay:.22s; }
+  .stagger > *:nth-child(7){ animation-delay:.26s; }
+  .stagger > *:nth-child(8){ animation-delay:.3s; }
+  @keyframes stag{ from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);} }
+
+  .client-card{ transition:border-color .2s, background .2s; }
+  .client-card:active{ background:var(--bg-subtle); }
+
+  .cat-checkbox{ appearance:none; width:20px; height:20px; border:1.5px solid var(--line); border-radius:6px; cursor:pointer; position:relative; transition:all .15s; flex-shrink:0; }
+  .cat-checkbox:checked{ border-color:var(--ink); background:var(--ink); }
+  .cat-checkbox:checked::after{ content:''; position:absolute; left:6px; top:2px; width:6px; height:11px; border:solid white; border-width:0 2px 2px 0; transform:rotate(45deg); }
+
+  .var-chip{ cursor:pointer; transition:all .15s; user-select:none; }
+  .var-chip:hover{ transform:translateY(-1px); }
+  .var-chip:active{ transform:scale(.95); }
+
+  .quick-card{ transition:all .2s; }
+  .quick-card:active{ transform:scale(.97); }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation:none !important; transition:none !important; }
+  }
+</style>
 </head>
-<body class="bg-gray-50 pb-24 overflow-x-hidden text-slate-800">
+<body class="min-h-screen">
 
-    <!-- Header Minimalista -->
-    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 flex items-center justify-between p-4">
-        <button onclick="toggleDrawer()" class="text-slate-600 text-xl active:scale-90 transition">
-            <i class="fas fa-bars"></i>
-        </button>
-        <h1 class="text-lg font-bold tracking-wide text-slate-800">ADONAY TOBAR</h1>
-        <div class="w-8"></div>
-    </header>
+<div class="phone-shell grain">
 
-    <!-- Fondo Oscuro Menú -->
-    <div id="drawer-backdrop" class="fixed inset-0 z-40" onclick="toggleDrawer()"></div>
-
-    <!-- Menú Lateral -->
-    <aside id="side-drawer" class="fixed top-0 left-0 h-full w-72 bg-white shadow-2xl z-50 flex flex-col">
-        <div class="bg-slate-800 text-white p-6 flex justify-between items-center">
-            <h2 class="text-lg font-bold">Menú Principal</h2>
-            <button onclick="toggleDrawer()" class="text-xl active:scale-90 text-slate-300 hover:text-white">
-                <i class="fas fa-times"></i>
-            </button>
+  <!-- ===== TOP BAR ===== -->
+  <header class="sticky top-0 z-30 bg-white/85 backdrop-blur-xl border-b border-[var(--line)]">
+    <div class="px-5 h-16 flex items-center justify-between">
+      <button id="menuBtn" aria-label="Abrir menú" class="press w-10 h-10 -ml-2 flex items-center justify-center rounded-full hover:bg-[var(--bg-subtle)]">
+        <div class="w-5 flex flex-col gap-[5px]">
+          <span class="block h-[2px] w-full bg-[var(--ink)] rounded-full"></span>
+          <span class="block h-[2px] w-full bg-[var(--ink)] rounded-full"></span>
+          <span class="block h-[2px] w-3/4 bg-[var(--ink)] rounded-full"></span>
         </div>
-        <nav class="flex flex-col mt-2">
-            <button onclick="cambiarVista('inicio')" class="nav-link active text-left py-4 px-6 flex items-center gap-4">
-                <i class="fas fa-home w-6 text-center"></i> Inicio
-            </button>
-            <button onclick="cambiarVista('clientes')" class="nav-link text-left py-4 px-6 flex items-center gap-4">
-                <i class="fas fa-users w-6 text-center"></i> Clientes
-            </button>
-            <button onclick="cambiarVista('proyectos')" class="nav-link text-left py-4 px-6 flex items-center gap-4">
-                <i class="fas fa-hard-hat w-6 text-center"></i> Proyectos
-            </button>
-            <button onclick="cambiarVista('reportes')" class="nav-link text-left py-4 px-6 flex items-center gap-4">
-                <i class="fas fa-chart-line w-6 text-center"></i> Reportes
-            </button>
-            <button onclick="cambiarVista('ajustes')" class="nav-link text-left py-4 px-6 flex items-center gap-4">
-                <i class="fas fa-cog w-6 text-center"></i> Ajustes
-            </button>
-        </nav>
-        <div class="mt-auto p-4 text-center text-xs text-slate-400 border-t border-slate-100">
-            <p>CRM Versión 1.2</p>
-        </div>
-    </aside>
-
-    <!-- Contenido Principal -->
-    <main id="app-content" class="p-4 max-w-md mx-auto"></main>
-
-    <!-- Botón Flotante (FAB) -->
-    <button id="fab" class="fixed bottom-6 right-6 bg-blue-900 text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-xl z-30 active:scale-90 transition hidden">
-        <i class="fas fa-plus"></i>
-    </button>
-
-    <!-- Estructura del Modal Global -->
-    <div id="modal-backdrop" class="fixed inset-0 z-[60] flex items-center justify-center p-4">
-        <div id="modal-content" class="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6 relative max-h-[90vh] overflow-y-auto">
-            <!-- El contenido se inyecta aquí con JS -->
-        </div>
+      </button>
+      <div class="flex items-center gap-2">
+        <div class="w-2 h-2 rounded-full bg-[var(--accent)] live-dot"></div>
+        <span class="font-display text-[15px] font-semibold tracking-tight" id="viewTitle">Inicio</span>
+      </div>
+      <button aria-label="Notificaciones" class="press w-10 h-10 -mr-2 flex items-center justify-center rounded-full hover:bg-[var(--bg-subtle)] relative">
+        <i class="fa-regular fa-bell text-[var(--ink)] text-[15px]"></i>
+        <span class="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-[var(--accent)]"></span>
+      </button>
     </div>
+  </header>
 
-    <script>
-        // --- BASE DE DATOS ---
-        let db = {
-            clientes: [],
-            categorias: ["Frecuente", "Nuevo", "Constructora"],
-            productos: ["Zincalum", "Coloralum", "Thermotecho"]
-        };
+  <!-- ===== DRAWER BACKDROP ===== -->
+  <div id="backdrop" class="backdrop fixed inset-0 bg-black/30 z-40"></div>
 
-        if (localStorage.getItem('galvanissa_db')) {
-            db = JSON.parse(localStorage.getItem('galvanissa_db'));
+  <!-- ===== DRAWER ===== -->
+  <aside id="drawer" class="drawer fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-[440px] h-full bg-white z-50 flex flex-col">
+    <div class="w-full max-w-[440px] mx-auto h-full flex flex-col">
+      <div class="pt-14 pb-8 px-7">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-2xl avatar-grad flex items-center justify-center text-white font-display font-semibold text-lg">A</div>
+          <div>
+            <div class="font-display text-lg font-semibold leading-tight">Atlas CRM</div>
+            <div class="text-xs text-[var(--muted)]">Workspace personal</div>
+          </div>
+        </div>
+      </div>
+
+      <nav class="px-4 flex-1 overflow-y-auto">
+        <div class="text-[11px] font-semibold text-[var(--muted)] uppercase tracking-wider px-3 mb-2">Menú</div>
+        <button data-view="home" class="nav-item active w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left">
+          <i class="nav-icon fa-solid fa-house text-[15px] w-5 text-center text-[var(--ink)]"></i>
+          <span class="font-medium text-[15px]">Inicio</span>
+        </button>
+        <button data-view="clients" class="nav-item w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left mt-1">
+          <i class="nav-icon fa-solid fa-users text-[15px] w-5 text-center text-[var(--ink)]"></i>
+          <span class="font-medium text-[15px]">Clientes</span>
+          <span id="clientCountBadge" class="ml-auto text-xs bg-[var(--bg-subtle)] text-[var(--muted)] px-2 py-0.5 rounded-full">0</span>
+        </button>
+        <button data-view="categories" class="nav-item w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left mt-1">
+          <i class="nav-icon fa-solid fa-tags text-[15px] w-5 text-center text-[var(--ink)]"></i>
+          <span class="font-medium text-[15px]">Categorías</span>
+          <span id="catCountBadge" class="ml-auto text-xs bg-[var(--bg-subtle)] text-[var(--muted)] px-2 py-0.5 rounded-full">0</span>
+        </button>
+        <button data-view="template" class="nav-item w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left mt-1">
+          <i class="nav-icon fa-solid fa-comment-dots text-[15px] w-5 text-center text-[var(--ink)]"></i>
+          <span class="font-medium text-[15px]">Plantilla mensaje</span>
+        </button>
+        <button data-view="portability" class="nav-item w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left mt-1">
+          <i class="nav-icon fa-solid fa-arrows-up-down text-[15px] w-5 text-center text-[var(--ink)]"></i>
+          <span class="font-medium text-[15px]">Portabilidad</span>
+        </button>
+
+        <div class="text-[11px] font-semibold text-[var(--muted)] uppercase tracking-wider px-3 mb-2 mt-6">Acciones rápidas</div>
+        <button id="drawerAdd" class="nav-item w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left">
+          <i class="nav-icon fa-solid fa-plus text-[15px] w-5 text-center text-[var(--accent)]"></i>
+          <span class="font-medium text-[15px]">Nuevo cliente</span>
+        </button>
+      </nav>
+
+      <div class="p-4 border-t border-[var(--line)]">
+        <div class="flex items-center gap-3 px-3 py-2">
+          <div class="w-9 h-9 rounded-full bg-gradient-to-br from-amber-200 to-rose-300 flex items-center justify-center text-xs font-semibold text-[var(--ink)]">AT</div>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-medium truncate">Adonay Tobar</div>
+            <div class="text-xs text-[var(--muted)] truncate">v2.0 · Almacenamiento local</div>
+          </div>
+          <i class="fa-solid fa-chevron-right text-[var(--muted)] text-xs"></i>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===== MAIN ===== -->
+  <main class="pb-28">
+
+    <!-- HOME -->
+    <section id="view-home" class="view active">
+      <div class="px-5 pt-6 pb-2">
+        <div class="text-xs text-[var(--muted)] font-medium uppercase tracking-wider" id="todayDate"></div>
+        <h1 class="font-display text-[34px] leading-[1.05] font-semibold mt-2 tracking-tight">Buen día,<br><span class="text-[var(--muted)]">gestiona tu red.</span></h1>
+      </div>
+
+      <div class="px-5 mt-6 grid grid-cols-2 gap-3">
+        <div class="bg-[var(--bg-subtle)] rounded-2xl p-4 border border-[var(--line)]">
+          <div class="flex items-center justify-between">
+            <i class="fa-solid fa-users text-[var(--accent)] text-sm"></i>
+            <div class="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]">Total</div>
+          </div>
+          <div class="font-display text-4xl font-semibold mt-3 ticker" id="statTotal">0</div>
+          <div class="text-xs text-[var(--muted)] mt-1">clientes registrados</div>
+        </div>
+        <div class="bg-[var(--ink)] text-white rounded-2xl p-4">
+          <div class="flex items-center justify-between">
+            <i class="fa-solid fa-arrow-trend-up text-[#86EFAC] text-sm"></i>
+            <div class="text-[10px] font-semibold uppercase tracking-wider text-white/60">7 días</div>
+          </div>
+          <div class="font-display text-4xl font-semibold mt-3 ticker" id="statWeek">0</div>
+          <div class="text-xs text-white/60 mt-1">agregados esta semana</div>
+        </div>
+      </div>
+
+      <div class="px-5 mt-8">
+        <h2 class="font-display text-lg font-semibold mb-3">Acciones rápidas</h2>
+        <div class="grid grid-cols-2 gap-3">
+          <button id="qaAdd" class="quick-card press bg-[var(--accent)] text-white rounded-2xl p-4 text-left">
+            <div class="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center mb-6"><i class="fa-solid fa-user-plus text-sm"></i></div>
+            <div class="font-medium text-[14px]">Nuevo cliente</div>
+            <div class="text-[11px] text-white/70 mt-0.5">Agrega un contacto</div>
+          </button>
+          <button data-view="categories" class="quick-card press bg-white border border-[var(--line)] rounded-2xl p-4 text-left">
+            <div class="w-9 h-9 rounded-full bg-[var(--accent-soft)] flex items-center justify-center mb-6"><i class="fa-solid fa-tags text-[var(--accent)] text-sm"></i></div>
+            <div class="font-medium text-[14px] text-[var(--ink)]">Categorías</div>
+            <div class="text-[11px] text-[var(--muted)] mt-0.5">Administra etiquetas</div>
+          </button>
+          <button data-view="template" class="quick-card press bg-white border border-[var(--line)] rounded-2xl p-4 text-left">
+            <div class="w-9 h-9 rounded-full bg-[var(--accent-soft)] flex items-center justify-center mb-6"><i class="fa-solid fa-comment-dots text-[var(--accent)] text-sm"></i></div>
+            <div class="font-medium text-[14px] text-[var(--ink)]">Plantilla</div>
+            <div class="text-[11px] text-[var(--muted)] mt-0.5">Mensaje WhatsApp</div>
+          </button>
+          <button data-view="portability" class="quick-card press bg-white border border-[var(--line)] rounded-2xl p-4 text-left">
+            <div class="w-9 h-9 rounded-full bg-[var(--accent-soft)] flex items-center justify-center mb-6"><i class="fa-solid fa-arrows-up-down text-[var(--accent)] text-sm"></i></div>
+            <div class="font-medium text-[14px] text-[var(--ink)]">Portabilidad</div>
+            <div class="text-[11px] text-[var(--muted)] mt-0.5">CSV import/export</div>
+          </button>
+        </div>
+      </div>
+
+      <div class="px-5 mt-8">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="font-display text-lg font-semibold">Recientes</h2>
+          <button data-view="clients" class="press text-xs font-medium text-[var(--accent)]">Ver todos →</button>
+        </div>
+        <div id="recentList" class="space-y-2 stagger"></div>
+      </div>
+    </section>
+
+    <!-- CLIENTES -->
+    <section id="view-clients" class="view">
+      <div class="px-5 pt-6 pb-2">
+        <h1 class="font-display text-[28px] font-semibold tracking-tight">Clientes</h1>
+        <p class="text-sm text-[var(--muted)] mt-1">Tu base de contactos, siempre a mano.</p>
+      </div>
+
+      <div class="px-5 mt-4">
+        <div class="search-bar flex items-center gap-3 bg-[var(--bg-subtle)] border border-[var(--line)] rounded-xl px-4 py-3 transition-colors">
+          <i class="fa-solid fa-magnifying-glass text-[var(--muted)] text-sm"></i>
+          <input id="searchInput" type="text" placeholder="Buscar por nombre, teléfono, dirección o categoría..." class="flex-1 bg-transparent outline-none text-sm placeholder:text-[#A1A1AA]">
+          <button id="clearSearch" class="hidden press text-[var(--muted)] text-xs hover:text-[var(--ink)]">Limpiar</button>
+        </div>
+      </div>
+
+      <div class="px-5 mt-4 flex gap-2 overflow-x-auto no-scrollbar">
+        <button class="filter-chip active flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-medium" data-filter="all">Todos</button>
+        <button class="filter-chip flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-medium" data-filter="project">Con proyecto</button>
+        <button class="filter-chip flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-medium" data-filter="az">A — Z</button>
+      </div>
+
+      <div class="px-5 mt-4">
+        <div class="flex items-center justify-between mb-2 px-1">
+          <span id="resultsLabel" class="text-xs text-[var(--muted)] font-medium">0 clientes</span>
+        </div>
+        <div id="clientsList" class="space-y-2 stagger"></div>
+      </div>
+    </section>
+
+    <!-- CATEGORÍAS -->
+    <section id="view-categories" class="view">
+      <div class="px-5 pt-6 pb-2">
+        <h1 class="font-display text-[28px] font-semibold tracking-tight">Categorías</h1>
+        <p class="text-sm text-[var(--muted)] mt-1">Clasifica y filtra tus clientes con etiquetas de color.</p>
+      </div>
+
+      <div class="px-5 mt-5">
+        <div class="bg-[var(--bg-subtle)] border border-[var(--line)] rounded-2xl p-4">
+          <label class="block text-xs font-semibold text-[var(--ink)] uppercase tracking-wider mb-2">Nueva categoría</label>
+          <div class="flex gap-2">
+            <input id="newCatName" type="text" class="field-input flex-1" placeholder="Ej. VIP, Lead, Frío..." maxlength="40">
+            <input id="newCatColor" type="color" value="#1B4332" class="w-12 h-[50px] border border-[var(--line)] rounded-xl cursor-pointer bg-white">
+          </div>
+          <button id="addCatBtn" class="press mt-3 w-full bg-[var(--ink)] hover:bg-black text-white rounded-xl py-3 font-medium text-sm transition-colors flex items-center justify-center gap-2">
+            <i class="fa-solid fa-plus text-xs"></i> Crear categoría
+          </button>
+        </div>
+      </div>
+
+      <div class="px-5 mt-6">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="font-display text-lg font-semibold">Existentes</h2>
+          <span id="catCount" class="text-xs text-[var(--muted)] font-medium">0</span>
+        </div>
+        <div id="categoriesList" class="space-y-2 stagger"></div>
+      </div>
+    </section>
+
+    <!-- PLANTILLA -->
+    <section id="view-template" class="view">
+      <div class="px-5 pt-6 pb-2">
+        <h1 class="font-display text-[28px] font-semibold tracking-tight">Plantilla de mensaje</h1>
+        <p class="text-sm text-[var(--muted)] mt-1">Variables que se reemplazan al enviar por WhatsApp.</p>
+      </div>
+
+      <div class="px-5 mt-5">
+        <div class="text-xs font-semibold text-[var(--muted)] uppercase tracking-wider mb-2">Variables disponibles</div>
+        <div class="flex flex-wrap gap-2">
+          <span class="var-chip bg-[var(--accent-soft)] text-[var(--accent)] text-xs px-3 py-1.5 rounded-full font-medium" data-var="{{Nombre}}">Nombre</span>
+          <span class="var-chip bg-[var(--accent-soft)] text-[var(--accent)] text-xs px-3 py-1.5 rounded-full font-medium" data-var="{{Apellido}}">Apellido</span>
+          <span class="var-chip bg-[var(--accent-soft)] text-[var(--accent)] text-xs px-3 py-1.5 rounded-full font-medium" data-var="{{Dirección}}">Dirección</span>
+          <span class="var-chip bg-[var(--accent-soft)] text-[var(--accent)] text-xs px-3 py-1.5 rounded-full font-medium" data-var="{{Teléfono}}">Teléfono</span>
+        </div>
+        <p class="text-[11px] text-[var(--muted)] mt-2">Toca una variable para insertarla en la posición del cursor.</p>
+      </div>
+
+      <div class="px-5 mt-5">
+        <label class="block text-xs font-semibold text-[var(--ink)] uppercase tracking-wider mb-2">Mensaje</label>
+        <textarea id="templateText" rows="8" class="field-input resize-none font-mono text-sm" placeholder="Hola {{Nombre}}, te escribo desde Atlas CRM..."></textarea>
+      </div>
+
+      <div class="px-5 mt-5">
+        <div class="text-xs font-semibold text-[var(--muted)] uppercase tracking-wider mb-2">Vista previa</div>
+        <div class="bg-[var(--bg-subtle)] border border-[var(--line)] rounded-2xl p-4">
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded-full bg-[var(--whatsapp)] flex items-center justify-center flex-shrink-0">
+              <i class="fa-brands fa-whatsapp text-white text-sm"></i>
+            </div>
+            <div class="flex-1 bg-white rounded-2xl rounded-tl-none p-3 text-sm text-[var(--ink)] whitespace-pre-wrap" id="templatePreview">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="px-5 mt-6">
+        <button id="saveTemplate" class="press w-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-2xl py-4 font-medium text-[15px] transition-colors flex items-center justify-center gap-2">
+          <i class="fa-solid fa-check text-xs"></i> Guardar plantilla
+        </button>
+      </div>
+    </section>
+
+    <!-- PORTABILIDAD -->
+    <section id="view-portability" class="view">
+      <div class="px-5 pt-6 pb-2">
+        <h1 class="font-display text-[28px] font-semibold tracking-tight">Portabilidad</h1>
+        <p class="text-sm text-[var(--muted)] mt-1">Respalda o migra tus contactos en formato CSV.</p>
+      </div>
+
+      <div class="px-5 mt-5 space-y-3">
+        <button id="exportCsv" class="press w-full bg-white border border-[var(--line)] rounded-2xl p-4 flex items-center gap-4 text-left hover:border-[var(--ink)] transition-colors">
+          <div class="w-12 h-12 rounded-2xl bg-[var(--accent-soft)] flex items-center justify-center flex-shrink-0">
+            <i class="fa-solid fa-file-export text-[var(--accent)]"></i>
+          </div>
+          <div class="flex-1">
+            <div class="font-medium text-[15px]">Exportar contactos</div>
+            <div class="text-xs text-[var(--muted)] mt-0.5">Descarga todos tus clientes en CSV</div>
+          </div>
+          <i class="fa-solid fa-arrow-right text-[var(--muted)] text-xs"></i>
+        </button>
+
+        <button id="importCsv" class="press w-full bg-white border border-[var(--line)] rounded-2xl p-4 flex items-center gap-4 text-left hover:border-[var(--ink)] transition-colors">
+          <div class="w-12 h-12 rounded-2xl bg-[var(--accent-soft)] flex items-center justify-center flex-shrink-0">
+            <i class="fa-solid fa-file-import text-[var(--accent)]"></i>
+          </div>
+          <div class="flex-1">
+            <div class="font-medium text-[15px]">Importar CSV</div>
+            <div class="text-xs text-[var(--muted)] mt-0.5">Fusiona contactos. Las categorías nuevas se crean solas.</div>
+          </div>
+          <i class="fa-solid fa-arrow-right text-[var(--muted)] text-xs"></i>
+        </button>
+        <input type="file" id="csvFileInput" accept=".csv" class="hidden">
+
+        <div class="bg-[var(--accent-soft)] rounded-2xl p-4 flex items-start gap-3 mt-4">
+          <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center flex-shrink-0">
+            <i class="fa-solid fa-lightbulb text-[var(--accent)] text-xs"></i>
+          </div>
+          <div class="flex-1">
+            <div class="font-medium text-sm text-[var(--accent)]">Formato esperado</div>
+            <div class="text-xs text-[var(--muted)] mt-1">Columnas: name, lastname, phone, address, categories (separadas por |), projectAddress, projectStatus.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- FAB -->
+  <button id="fab" aria-label="Nuevo cliente" class="fab press fixed bottom-6 left-1/2 -translate-x-1/2 w-14 h-14 rounded-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white flex items-center justify-center z-30 transition-colors">
+    <i class="fa-solid fa-plus text-xl"></i>
+  </button>
+
+  <!-- ===== MODAL CLIENTE ===== -->
+  <div id="modal" class="modal fixed inset-0 z-[60] bg-white flex flex-col">
+    <div class="w-full max-w-[440px] mx-auto h-full flex flex-col">
+      <div class="px-5 h-16 flex items-center justify-between border-b border-[var(--line)]">
+        <button id="closeModal" aria-label="Cerrar" class="press w-10 h-10 -ml-2 flex items-center justify-center rounded-full hover:bg-[var(--bg-subtle)]">
+          <i class="fa-solid fa-xmark text-[var(--ink)]"></i>
+        </button>
+        <h2 id="modalTitle" class="font-display font-semibold text-[15px]">Nuevo cliente</h2>
+        <div class="w-10"></div>
+      </div>
+
+      <div class="flex-1 overflow-y-auto px-5 py-6">
+        <div class="flex flex-col items-center mb-8">
+          <div id="modalAvatar" class="w-20 h-20 rounded-3xl avatar-grad flex items-center justify-center text-white font-display font-semibold text-2xl">?</div>
+          <div class="text-xs text-[var(--muted)] mt-3">Vista previa del contacto</div>
+        </div>
+
+        <form id="clientForm" class="space-y-5" autocomplete="off">
+          <input type="hidden" id="clientId">
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-[var(--ink)] uppercase tracking-wider mb-2">Nombre</label>
+              <input id="clientName" type="text" class="field-input" placeholder="Juan" required maxlength="40">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-[var(--ink)] uppercase tracking-wider mb-2">Apellidos</label>
+              <input id="clientLastname" type="text" class="field-input" placeholder="Pérez" required maxlength="40">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-[var(--ink)] uppercase tracking-wider mb-2">Teléfono</label>
+            <div class="relative">
+              <i class="fa-solid fa-phone absolute left-4 top-1/2 -translate-y-1/2 text-[var(--muted)] text-sm pointer-events-none"></i>
+              <input id="clientPhone" type="tel" class="field-input pl-11" placeholder="+34 600 123 456" required maxlength="22">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-[var(--ink)] uppercase tracking-wider mb-2">Dirección</label>
+            <div class="relative">
+              <i class="fa-solid fa-location-dot absolute left-4 top-[18px] text-[var(--muted)] text-sm pointer-events-none"></i>
+              <textarea id="clientAddress" rows="2" class="field-input pl-11 resize-none" placeholder="Calle, número, ciudad..." maxlength="200"></textarea>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-[var(--ink)] uppercase tracking-wider mb-2">Categorías</label>
+            <div id="categoriesContainer" class="bg-[var(--bg-subtle)] border border-[var(--line)] rounded-2xl p-4 space-y-3"></div>
+          </div>
+
+          <div id="projectFields" class="space-y-4 bg-[var(--accent-soft)] p-4 rounded-2xl border border-[var(--accent-soft)] hidden">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-helmet-safety text-[var(--accent)] text-sm"></i>
+              <h4 class="text-xs font-bold text-[var(--accent)] uppercase tracking-wider">Detalles del proyecto</h4>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-[var(--ink)] mb-1.5">Dirección del proyecto</label>
+              <input id="projectAddress" type="text" class="field-input bg-white" placeholder="Ubicación de la obra" maxlength="200">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-[var(--ink)] mb-1.5">Estado del proyecto</label>
+              <input id="projectStatus" type="text" class="field-input bg-white" placeholder="Ej: Cimentación, Techado..." maxlength="100">
+            </div>
+          </div>
+
+          <button type="button" id="deleteFromModal" class="press hidden w-full text-[var(--danger)] py-3 font-medium text-sm hover:bg-[var(--danger-soft)] rounded-xl transition-colors">
+            <i class="fa-solid fa-trash mr-2 text-xs"></i>Eliminar cliente
+          </button>
+        </form>
+      </div>
+
+      <div class="px-5 py-4 border-t border-[var(--line)] bg-white">
+        <button id="saveClient" class="press w-full bg-[var(--ink)] hover:bg-black text-white rounded-2xl py-4 font-medium text-[15px] transition-colors flex items-center justify-center gap-2">
+          <i class="fa-solid fa-check text-xs"></i> Guardar cliente
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SHEET EDITAR CATEGORÍA ===== -->
+  <div id="editCatBackdrop" class="backdrop fixed inset-0 bg-black/40 z-[70]"></div>
+  <div id="editCatSheet" class="sheet fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[440px] z-[80] bg-white rounded-t-3xl">
+    <div class="p-6">
+      <div class="w-10 h-1 bg-[var(--line)] rounded-full mx-auto mb-5"></div>
+      <div class="flex items-center gap-3 mb-5">
+        <div class="w-11 h-11 rounded-full bg-[var(--accent-soft)] flex items-center justify-center">
+          <i class="fa-solid fa-tag text-[var(--accent)]"></i>
+        </div>
+        <div>
+          <div class="font-display font-semibold text-lg">Editar categoría</div>
+          <div class="text-xs text-[var(--muted)]" id="editCatProtectedLabel"></div>
+        </div>
+      </div>
+      <input type="hidden" id="editCatOldName">
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-[var(--ink)] uppercase tracking-wider mb-2">Nombre</label>
+          <input id="editCatName" type="text" class="field-input" maxlength="40">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-[var(--ink)] uppercase tracking-wider mb-2">Color</label>
+          <div class="flex items-center gap-3">
+            <input id="editCatColor" type="color" class="w-14 h-12 border border-[var(--line)] rounded-xl cursor-pointer bg-white">
+            <div id="editCatPreview" class="flex-1 px-4 py-3 rounded-xl text-sm font-medium text-center">Vista previa</div>
+          </div>
+        </div>
+      </div>
+      <div class="mt-5 space-y-2">
+        <button id="confirmEditCat" class="press w-full bg-[var(--ink)] hover:bg-black text-white rounded-2xl py-3.5 font-medium text-[15px] transition-colors">Guardar cambios</button>
+        <button id="cancelEditCat" class="press w-full text-[var(--muted)] py-3 font-medium text-sm">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SHEET ELIMINAR ===== -->
+  <div id="delBackdrop" class="backdrop fixed inset-0 bg-black/40 z-[70]"></div>
+  <div id="delSheet" class="sheet fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[440px] z-[80] bg-white rounded-t-3xl">
+    <div class="p-6">
+      <div class="w-10 h-1 bg-[var(--line)] rounded-full mx-auto mb-5"></div>
+      <div class="flex items-center gap-3 mb-3">
+        <div class="w-12 h-12 rounded-full bg-[var(--danger-soft)] flex items-center justify-center">
+          <i class="fa-solid fa-trash text-[var(--danger)]"></i>
+        </div>
+        <div>
+          <div class="font-display font-semibold text-lg" id="delTitle">Eliminar</div>
+        </div>
+      </div>
+      <p class="text-sm text-[var(--muted)] mb-6" id="delText">¿Seguro que deseas eliminar? Esta acción no se puede deshacer.</p>
+      <div class="space-y-2">
+        <button id="confirmDel" class="press w-full bg-[var(--danger)] hover:bg-red-700 text-white rounded-2xl py-3.5 font-medium text-[15px] transition-colors">Eliminar</button>
+        <button id="cancelDel" class="press w-full text-[var(--muted)] py-3 font-medium text-sm">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TOAST ===== -->
+  <div id="toast" class="toast fixed bottom-28 left-1/2 -translate-x-1/2 z-[90] bg-[var(--ink)] text-white px-5 py-3 rounded-full shadow-lg flex items-center gap-2 text-sm font-medium max-w-[90vw]">
+    <i id="toastIcon" class="fa-solid fa-check"></i>
+    <span id="toastText">Guardado</span>
+  </div>
+
+</div>
+
+<script>
+  // ===== STATE =====
+  const CLIENTS_KEY = 'atlas_crm_clients_v2';
+  const CATS_KEY = 'atlas_crm_categories_v2';
+  const TPL_KEY = 'atlas_crm_template_v2';
+
+  let clients = JSON.parse(localStorage.getItem(CLIENTS_KEY) || '[]');
+  let categories = JSON.parse(localStorage.getItem(CATS_KEY) || '[]');
+  let editingId = null;
+  let deletingType = null; // 'client' | 'category'
+  let deletingId = null;
+  let currentView = 'home';
+  let currentFilter = 'all';
+  let searchQuery = '';
+
+  // ===== UTILS =====
+  const $ = s => document.querySelector(s);
+  const $$ = s => document.querySelectorAll(s);
+  const saveClients = () => localStorage.setItem(CLIENTS_KEY, JSON.stringify(clients));
+  const saveCats = () => localStorage.setItem(CATS_KEY, JSON.stringify(categories));
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+  const escapeHtml = s => (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const initials = (name, lastname='') => {
+    const n = (name||'').trim(), l = (lastname||'').trim();
+    if(!n && !l) return '?';
+    if(!l) return n[0].toUpperCase();
+    return (n[0] + l[0]).toUpperCase();
+  };
+  function timeAgo(ts){
+    const d = Date.now() - ts;
+    const min = Math.floor(d/60000);
+    if(min < 1) return 'ahora';
+    if(min < 60) return `hace ${min} min`;
+    const h = Math.floor(min/60);
+    if(h < 24) return `hace ${h} h`;
+    const days = Math.floor(h/24);
+    if(days < 7) return `hace ${days} d`;
+    return new Date(ts).toLocaleDateString('es-ES', {day:'numeric', month:'short'});
+  }
+  function showToast(text, icon='check'){
+    $('#toastText').textContent = text;
+    $('#toastIcon').className = `fa-solid fa-${icon}`;
+    $('#toast').classList.add('show');
+    clearTimeout(window._toastT);
+    window._toastT = setTimeout(()=> $('#toast').classList.remove('show'), 2800);
+  }
+  function animateCount(el, target){
+    const start = parseInt(el.textContent) || 0;
+    if(start === target){ el.textContent = target; return; }
+    const dur = 600, t0 = performance.now();
+    function tick(now){
+      const t = Math.min(1, (now-t0)/dur);
+      const eased = 1 - Math.pow(1-t, 3);
+      el.textContent = Math.round(start + (target-start)*eased);
+      if(t < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+  function hexToRgba(hex, alpha){
+    const h = hex.replace('#','');
+    const r = parseInt(h.slice(0,2),16), g = parseInt(h.slice(2,4),16), b = parseInt(h.slice(4,6),16);
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+  function catStyle(color){
+    return `background:${hexToRgba(color,0.12)}; color:${color};`;
+  }
+
+  // ===== INIT CATEGORIES =====
+  function initCategories(){
+    if(categories.length === 0){
+      categories = [
+        { name:'Proyectos', color:'#1B4332', protected:true },
+        { name:'VIP', color:'#D97706' },
+        { name:'Lead', color:'#2563EB' }
+      ];
+      saveCats();
+    }
+  }
+
+  // ===== NAVIGATION =====
+  function switchView(view){
+    currentView = view;
+    $$('.view').forEach(v => v.classList.remove('active'));
+    $(`#view-${view}`).classList.add('active');
+    const titles = { home:'Inicio', clients:'Clientes', categories:'Categorías', template:'Plantilla', portability:'Portabilidad' };
+    $('#viewTitle').textContent = titles[view] || 'Inicio';
+    $$('.nav-item[data-view]').forEach(it => it.classList.toggle('active', it.dataset.view === view));
+    if(view === 'clients') renderClients();
+    if(view === 'home') renderHome();
+    if(view === 'categories') renderCategoriesView();
+    if(view === 'template') updateTemplatePreview();
+    closeDrawer();
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+
+  // ===== DRAWER =====
+  function openDrawer(){ $('#drawer').classList.add('open'); $('#backdrop').classList.add('open'); }
+  function closeDrawer(){ $('#drawer').classList.remove('open'); $('#backdrop').classList.remove('open'); }
+  $('#menuBtn').addEventListener('click', openDrawer);
+  $('#backdrop').addEventListener('click', closeDrawer);
+  $$('.nav-item[data-view]').forEach(item => item.addEventListener('click', () => switchView(item.dataset.view)));
+  $$('[data-view]').forEach(el => {
+    if(el.classList.contains('nav-item')) return;
+    el.addEventListener('click', () => switchView(el.dataset.view));
+  });
+
+  // ===== MODAL CLIENTE =====
+  function openModal(id=null){
+    editingId = id;
+    renderCategoryCheckboxes(id);
+    if(id){
+      const c = clients.find(c => c.id === id);
+      if(!c) return;
+      $('#modalTitle').textContent = 'Editar cliente';
+      $('#clientName').value = c.name;
+      $('#clientLastname').value = c.lastname;
+      $('#clientPhone').value = c.phone;
+      $('#clientAddress').value = c.address;
+      $('#clientId').value = c.id;
+      $('#projectAddress').value = c.projectAddress || '';
+      $('#projectStatus').value = c.projectStatus || '';
+      $('#deleteFromModal').classList.remove('hidden');
+      updateAvatarPreview(c.name, c.lastname);
+      toggleProjectFields();
+    } else {
+      $('#modalTitle').textContent = 'Nuevo cliente';
+      $('#clientForm').reset();
+      $('#clientId').value = '';
+      $('#deleteFromModal').classList.add('hidden');
+      updateAvatarPreview('','');
+      // Marcar "Proyectos" por defecto si existe
+      setTimeout(() => {
+        const projCb = document.querySelector(`.cat-checkbox[data-cat="Proyectos"]`);
+        if(projCb) projCb.checked = true;
+        toggleProjectFields();
+      }, 50);
+    }
+    $('#modal').classList.add('open');
+    setTimeout(()=> $('#clientName').focus(), 350);
+  }
+  function closeModal(){ $('#modal').classList.remove('open'); editingId = null; }
+  $('#closeModal').addEventListener('click', closeModal);
+  $('#fab').addEventListener('click', () => openModal());
+  $('#drawerAdd').addEventListener('click', () => { closeDrawer(); setTimeout(()=> openModal(), 220); });
+  $('#qaAdd').addEventListener('click', () => openModal());
+
+  function updateAvatarPreview(name, lastname){
+    $('#modalAvatar').textContent = initials(name, lastname) || '?';
+  }
+  $('#clientName').addEventListener('input', e => updateAvatarPreview(e.target.value, $('#clientLastname').value));
+  $('#clientLastname').addEventListener('input', e => updateAvatarPreview($('#clientName').value, e.target.value));
+
+  function renderCategoryCheckboxes(clientId=null){
+    const container = $('#categoriesContainer');
+    container.innerHTML = '';
+    if(categories.length === 0){
+      container.innerHTML = '<div class="text-xs text-[var(--muted)] py-2">No hay categorías. Crea alguna desde la sección Categorías.</div>';
+      return;
+    }
+    const client = clientId ? clients.find(c => c.id === clientId) : null;
+    const selected = client?.categories || [];
+    categories.forEach(cat => {
+      const isChecked = selected.includes(cat.name);
+      const label = document.createElement('label');
+      label.className = 'flex items-center gap-3 cursor-pointer';
+      label.innerHTML = `
+        <input type="checkbox" class="cat-checkbox" data-cat="${escapeHtml(cat.name)}" ${isChecked?'checked':''}>
+        <span class="w-3 h-3 rounded-full flex-shrink-0" style="background:${cat.color}"></span>
+        <span class="text-sm font-medium text-[var(--ink)]">${escapeHtml(cat.name)}</span>
+        ${cat.protected ? '<span class="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full font-semibold uppercase tracking-wider">Protegida</span>' : ''}
+      `;
+      label.querySelector('input').addEventListener('change', toggleProjectFields);
+      container.appendChild(label);
+    });
+  }
+
+  function toggleProjectFields(){
+    const projCb = document.querySelector(`.cat-checkbox[data-cat="Proyectos"]`);
+    $('#projectFields').classList.toggle('hidden', !(projCb && projCb.checked));
+  }
+
+  $('#saveClient').addEventListener('click', () => {
+    const nameEl = $('#clientName');
+    const lastnameEl = $('#clientLastname');
+    const phoneEl = $('#clientPhone');
+    const name = nameEl.value.trim();
+    const lastname = lastnameEl.value.trim();
+    const phone = phoneEl.value.trim();
+    const address = $('#clientAddress').value.trim();
+    const id = $('#clientId').value;
+
+    if(!name){ nameEl.classList.add('error'); nameEl.focus(); setTimeout(()=>nameEl.classList.remove('error'),1500); showToast('El nombre es obligatorio','exclamation'); return; }
+    if(!lastname){ lastnameEl.classList.add('error'); lastnameEl.focus(); setTimeout(()=>lastnameEl.classList.remove('error'),1500); showToast('Los apellidos son obligatorios','exclamation'); return; }
+    if(!phone){ phoneEl.classList.add('error'); phoneEl.focus(); setTimeout(()=>phoneEl.classList.remove('error'),1500); showToast('El teléfono es obligatorio','exclamation'); return; }
+
+    const selectedCats = Array.from(document.querySelectorAll('.cat-checkbox:checked')).map(cb => cb.dataset.cat);
+
+    // Duplicado (solo al crear)
+    if(!id){
+      const dup = clients.find(c => c.phone === phone);
+      if(dup){
+        showToast(`Ya existe un cliente con ese teléfono: ${dup.name} ${dup.lastname}`, 'exclamation');
+        return;
+      }
+    } else {
+      const dup = clients.find(c => c.phone === phone && c.id !== id);
+      if(dup){
+        showToast(`Ese teléfono pertenece a otro cliente: ${dup.name} ${dup.lastname}`, 'exclamation');
+        return;
+      }
+    }
+
+    const data = {
+      id: id || uid(),
+      name, lastname, phone, address,
+      categories: selectedCats,
+      updatedAt: Date.now()
+    };
+    if(selectedCats.includes('Proyectos')){
+      data.projectAddress = $('#projectAddress').value.trim();
+      data.projectStatus = $('#projectStatus').value.trim();
+    }
+
+    if(id){
+      const c = clients.find(c => c.id === id);
+      Object.assign(c, data);
+      showToast('Cliente actualizado','pen-to-square');
+    } else {
+      data.createdAt = Date.now();
+      clients.unshift(data);
+      showToast('Cliente agregado','user-check');
+    }
+    saveClients();
+    closeModal();
+    if(currentView === 'clients') renderClients();
+    if(currentView === 'home') renderHome();
+    updateBadges();
+  });
+
+  // ===== DELETE FLOW =====
+  function askDeleteClient(id){
+    const c = clients.find(c => c.id === id);
+    if(!c) return;
+    deletingType = 'client';
+    deletingId = id;
+    $('#delTitle').textContent = 'Eliminar cliente';
+    $('#delText').innerHTML = `¿Seguro que deseas eliminar a <span class="font-medium text-[var(--ink)]">${escapeHtml(c.name)} ${escapeHtml(c.lastname)}</span>? Esta acción no se puede deshacer.`;
+    openDelSheet();
+  }
+  function askDeleteCategory(name){
+    const cat = categories.find(c => c.name === name);
+    if(!cat) return;
+    if(cat.protected){ showToast('Las categorías protegidas no se pueden eliminar','lock'); return; }
+    deletingType = 'category';
+    deletingId = name;
+    $('#delTitle').textContent = 'Eliminar categoría';
+    $('#delText').innerHTML = `¿Eliminar <span class="font-medium text-[var(--ink)]">${escapeHtml(name)}</span>? Se quitará de todos los clientes asignados.`;
+    openDelSheet();
+  }
+  function openDelSheet(){ $('#delBackdrop').classList.add('open'); $('#delSheet').classList.add('open'); }
+  function closeDel(){ $('#delBackdrop').classList.remove('open'); $('#delSheet').classList.remove('open'); deletingId=null; deletingType=null; }
+  $('#cancelDel').addEventListener('click', closeDel);
+  $('#delBackdrop').addEventListener('click', closeDel);
+  $('#confirmDel').addEventListener('click', () => {
+    if(deletingType === 'client'){
+      clients = clients.filter(c => c.id !== deletingId);
+      saveClients();
+      showToast('Cliente eliminado','trash');
+      if($('#modal').classList.contains('open')) closeModal();
+      if(currentView === 'clients') renderClients();
+      if(currentView === 'home') renderHome();
+      updateBadges();
+    } else if(deletingType === 'category'){
+      const name = deletingId;
+      categories = categories.filter(c => c.name !== name);
+      saveCats();
+      clients.forEach(c => { if(c.categories) c.categories = c.categories.filter(x => x !== name); });
+      saveClients();
+      showToast('Categoría eliminada','trash');
+      renderCategoriesView();
+      if(currentView === 'clients') renderClients();
+      updateBadges();
+    }
+    closeDel();
+  });
+  $('#deleteFromModal').addEventListener('click', () => { if(editingId){ closeDel(); setTimeout(()=> askDeleteClient(editingId), 100); } });
+
+  // ===== WHATSAPP =====
+  function sendWhatsApp(client){
+    const phone = (client.phone||'').replace(/[^0-9]/g,'');
+    if(!phone){ showToast('El cliente no tiene teléfono válido','exclamation'); return; }
+    let tpl = localStorage.getItem(TPL_KEY) || 'Hola {{Nombre}}, te escribo desde Atlas CRM.';
+    const msg = tpl
+      .replaceAll('{{Nombre}}', client.name || '')
+      .replaceAll('{{Apellido}}', client.lastname || '')
+      .replaceAll('{{Dirección}}', client.address || '')
+      .replaceAll('{{Teléfono}}', client.phone || '');
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+  }
+
+  // ===== SEARCH =====
+  $('#searchInput').addEventListener('input', e => {
+    searchQuery = e.target.value.toLowerCase().trim();
+    $('#clearSearch').classList.toggle('hidden', !searchQuery);
+    renderClients();
+  });
+  $('#clearSearch').addEventListener('click', () => {
+    $('#searchInput').value = '';
+    searchQuery = '';
+    $('#clearSearch').classList.add('hidden');
+    renderClients();
+  });
+
+  // ===== FILTERS =====
+  $$('.filter-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      $$('.filter-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      currentFilter = chip.dataset.filter;
+      renderClients();
+    });
+  });
+
+  // ===== RENDER CLIENTS =====
+  function getFilteredClients(){
+    let list = [...clients];
+    if(searchQuery){
+      list = list.filter(c =>
+        (`${c.name} ${c.lastname}`).toLowerCase().includes(searchQuery) ||
+        (c.phone||'').toLowerCase().includes(searchQuery) ||
+        (c.address||'').toLowerCase().includes(searchQuery) ||
+        (c.categories||[]).join(' ').toLowerCase().includes(searchQuery)
+      );
+    }
+    if(currentFilter === 'project') list = list.filter(c => c.categories?.includes('Proyectos'));
+    else if(currentFilter === 'az') list.sort((a,b) => `${a.name} ${a.lastname}`.localeCompare(`${b.name} ${b.lastname}`));
+    else list.sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
+    return list;
+  }
+
+  function renderHome(){
+    const total = clients.length;
+    const weekAgo = Date.now() - 7*86400000;
+    const thisWeek = clients.filter(c => (c.createdAt||0) > weekAgo).length;
+    animateCount($('#statTotal'), total);
+    animateCount($('#statWeek'), thisWeek);
+
+    const recent = [...clients].sort((a,b) => (b.createdAt||0) - (a.createdAt||0)).slice(0, 4);
+    const recentList = $('#recentList');
+    if(recent.length === 0){
+      recentList.innerHTML = `
+        <div class="bg-[var(--bg-subtle)] rounded-2xl p-6 text-center border border-dashed border-[var(--line)]">
+          <div class="w-14 h-14 rounded-full empty-orb mx-auto mb-3 flex items-center justify-center">
+            <i class="fa-solid fa-user-plus text-[var(--accent)]"></i>
+          </div>
+          <div class="font-medium text-sm">Sin clientes aún</div>
+          <div class="text-xs text-[var(--muted)] mt-1">Toca el botón + para empezar</div>
+        </div>`;
+    } else {
+      recentList.innerHTML = recent.map(c => `
+        <button data-edit="${c.id}" class="press client-card w-full bg-white border border-[var(--line)] rounded-2xl p-3 flex items-center gap-3 text-left">
+          <div class="w-11 h-11 rounded-xl avatar-grad flex items-center justify-center text-white font-display font-semibold text-sm flex-shrink-0">${initials(c.name, c.lastname)}</div>
+          <div class="flex-1 min-w-0">
+            <div class="font-medium text-[15px] truncate">${escapeHtml(c.name)} ${escapeHtml(c.lastname)}</div>
+            <div class="text-xs text-[var(--muted)] truncate">${escapeHtml(c.phone || 'Sin teléfono')}</div>
+          </div>
+          <div class="text-[10px] text-[var(--muted)] uppercase tracking-wider font-medium">${timeAgo(c.createdAt||Date.now())}</div>
+        </button>
+      `).join('');
+      recentList.querySelectorAll('[data-edit]').forEach(btn => btn.addEventListener('click', () => openModal(btn.dataset.edit)));
+    }
+    updateBadges();
+  }
+
+  function renderClients(){
+    const list = getFilteredClients();
+    const container = $('#clientsList');
+    $('#resultsLabel').textContent = `${list.length} ${list.length === 1 ? 'cliente' : 'clientes'}`;
+
+    if(list.length === 0){
+      if(searchQuery){
+        container.innerHTML = `
+          <div class="text-center py-16">
+            <div class="w-16 h-16 rounded-full bg-[var(--bg-subtle)] mx-auto mb-4 flex items-center justify-center">
+              <i class="fa-solid fa-magnifying-glass text-[var(--muted)]"></i>
+            </div>
+            <div class="font-medium text-[15px]">Sin resultados</div>
+            <div class="text-xs text-[var(--muted)] mt-1">Prueba con otro término de búsqueda</div>
+          </div>`;
+      } else {
+        container.innerHTML = `
+          <div class="text-center py-16">
+            <div class="w-16 h-16 rounded-full empty-orb mx-auto mb-4 flex items-center justify-center">
+              <i class="fa-solid fa-address-book text-[var(--accent)]"></i>
+            </div>
+            <div class="font-display font-semibold text-lg">Aún no hay clientes</div>
+            <div class="text-sm text-[var(--muted)] mt-1">Toca el botón + para agregar el primero</div>
+          </div>`;
+      }
+      return;
+    }
+
+    container.innerHTML = list.map(c => {
+      const cats = (c.categories||[]).map(cn => {
+        const cat = categories.find(x => x.name === cn);
+        const color = cat?.color || '#71717A';
+        return `<span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-medium leading-tight" style="${catStyle(color)}">${escapeHtml(cn)}</span>`;
+      }).join(' ');
+      const projInfo = (c.categories||[]).includes('Proyectos') && c.projectAddress
+        ? `<div class="text-xs text-[var(--muted)] truncate flex items-center gap-1.5"><i class="fa-solid fa-helmet-safety text-[9px] text-[var(--accent)]"></i>${escapeHtml(c.projectAddress)}${c.projectStatus ? ` · ${escapeHtml(c.projectStatus)}` : ''}</div>`
+        : '';
+      return `
+        <div class="client-card bg-white border border-[var(--line)] rounded-2xl p-3.5">
+          <div class="flex items-center gap-3">
+            <button data-edit="${c.id}" class="press flex items-center gap-3 flex-1 text-left min-w-0">
+              <div class="w-12 h-12 rounded-xl avatar-grad flex items-center justify-center text-white font-display font-semibold text-sm flex-shrink-0">${initials(c.name, c.lastname)}</div>
+              <div class="flex-1 min-w-0">
+                ${cats ? `<div class="flex flex-wrap gap-1 mb-1">${cats}</div>` : ''}
+                <div class="font-medium text-[15px] truncate">${escapeHtml(c.name)} ${escapeHtml(c.lastname)}</div>
+                ${c.phone ? `<div class="text-xs text-[var(--muted)] truncate flex items-center gap-1.5"><i class="fa-solid fa-phone text-[9px]"></i>${escapeHtml(c.phone)}</div>` : ''}
+                ${c.address ? `<div class="text-xs text-[var(--muted)] truncate flex items-center gap-1.5"><i class="fa-solid fa-location-dot text-[9px]"></i>${escapeHtml(c.address)}</div>` : ''}
+                ${projInfo}
+              </div>
+            </button>
+            <div class="flex flex-col gap-1 flex-shrink-0">
+              <button data-wa="${c.id}" aria-label="WhatsApp" class="press w-9 h-9 rounded-full bg-[var(--whatsapp)] hover:bg-[var(--whatsapp-hover)] flex items-center justify-center text-white transition-colors">
+                <i class="fa-brands fa-whatsapp text-base"></i>
+              </button>
+              <button data-edit="${c.id}" aria-label="Editar" class="press w-9 h-9 rounded-full hover:bg-[var(--bg-subtle)] flex items-center justify-center text-[var(--muted)]">
+                <i class="fa-solid fa-pen text-xs"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    container.querySelectorAll('[data-edit]').forEach(btn => btn.addEventListener('click', () => openModal(btn.dataset.edit)));
+    container.querySelectorAll('[data-wa]').forEach(btn => btn.addEventListener('click', () => {
+      const c = clients.find(x => x.id === btn.dataset.wa);
+      if(c) sendWhatsApp(c);
+    }));
+
+    container.classList.remove('stagger');
+    void container.offsetWidth;
+    container.classList.add('stagger');
+  }
+
+  // ===== CATEGORÍAS VIEW =====
+  $('#addCatBtn').addEventListener('click', () => {
+    const name = $('#newCatName').value.trim();
+    const color = $('#newCatColor').value;
+    if(!name){ showToast('Ingresa un nombre','exclamation'); return; }
+    if(categories.find(c => c.name.toLowerCase() === name.toLowerCase())){
+      showToast('Ya existe una categoría con ese nombre','exclamation');
+      return;
+    }
+    categories.push({ name, color, protected:false });
+    saveCats();
+    $('#newCatName').value = '';
+    showToast('Categoría creada','tag');
+    renderCategoriesView();
+    updateBadges();
+  });
+
+  function renderCategoriesView(){
+    $('#catCount').textContent = categories.length;
+    const list = $('#categoriesList');
+    if(categories.length === 0){
+      list.innerHTML = `<div class="text-center py-10 text-sm text-[var(--muted)]">No hay categorías aún.</div>`;
+      return;
+    }
+    list.innerHTML = categories.map(cat => {
+      const count = clients.filter(c => c.categories?.includes(cat.name)).length;
+      return `
+        <div class="bg-white border border-[var(--line)] rounded-2xl p-3.5 flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="${catStyle(cat.color)}">
+            <i class="fa-solid fa-tag text-sm"></i>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="font-medium text-[15px]">${escapeHtml(cat.name)}</span>
+              ${cat.protected ? '<span class="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full font-semibold uppercase tracking-wider">Protegida</span>' : ''}
+            </div>
+            <div class="text-xs text-[var(--muted)]">${count} ${count===1?'cliente':'clientes'}</div>
+          </div>
+          <button data-editcat="${escapeHtml(cat.name)}" aria-label="Editar" class="press w-9 h-9 rounded-full hover:bg-[var(--bg-subtle)] flex items-center justify-center text-[var(--muted)]">
+            <i class="fa-solid fa-pen text-xs"></i>
+          </button>
+          ${!cat.protected ? `<button data-delcat="${escapeHtml(cat.name)}" aria-label="Eliminar" class="press w-9 h-9 rounded-full hover:bg-[var(--danger-soft)] hover:text-[var(--danger)] flex items-center justify-center text-[var(--muted)] transition-colors">
+            <i class="fa-solid fa-trash text-xs"></i>
+          </button>` : ''}
+        </div>
+      `;
+    }).join('');
+    list.querySelectorAll('[data-editcat]').forEach(btn => btn.addEventListener('click', () => openEditCat(btn.dataset.editcat)));
+    list.querySelectorAll('[data-delcat]').forEach(btn => btn.addEventListener('click', () => askDeleteCategory(btn.dataset.delcat)));
+  }
+
+  // ===== EDIT CATEGORY SHEET =====
+  function openEditCat(name){
+    const cat = categories.find(c => c.name === name);
+    if(!cat) return;
+    $('#editCatOldName').value = name;
+    $('#editCatName').value = cat.name;
+    $('#editCatColor').value = cat.color;
+    $('#editCatName').disabled = !!cat.protected;
+    $('#editCatProtectedLabel').textContent = cat.protected ? 'Categoría protegida · el nombre no se puede cambiar' : 'Personaliza nombre y color';
+    updateEditCatPreview();
+    $('#editCatBackdrop').classList.add('open');
+    $('#editCatSheet').classList.add('open');
+  }
+  function closeEditCat(){ $('#editCatBackdrop').classList.remove('open'); $('#editCatSheet').classList.remove('open'); }
+  function updateEditCatPreview(){
+    const color = $('#editCatColor').value;
+    const name = $('#editCatName').value || 'Vista previa';
+    const p = $('#editCatPreview');
+    p.style.cssText = catStyle(color);
+    p.textContent = name;
+  }
+  $('#editCatName').addEventListener('input', updateEditCatPreview);
+  $('#editCatColor').addEventListener('input', updateEditCatPreview);
+  $('#cancelEditCat').addEventListener('click', closeEditCat);
+  $('#editCatBackdrop').addEventListener('click', closeEditCat);
+  $('#confirmEditCat').addEventListener('click', () => {
+    const oldName = $('#editCatOldName').value;
+    const newName = $('#editCatName').value.trim();
+    const newColor = $('#editCatColor').value;
+    const cat = categories.find(c => c.name === oldName);
+    if(!cat) return;
+    if(!cat.protected && !newName){ showToast('El nombre no puede estar vacío','exclamation'); return; }
+    if(!cat.protected && newName !== oldName && categories.find(c => c.name.toLowerCase() === newName.toLowerCase())){
+      showToast('Ya existe una categoría con ese nombre','exclamation'); return;
+    }
+    if(!cat.protected) cat.name = newName;
+    cat.color = newColor;
+    saveCats();
+    if(newName !== oldName){
+      clients.forEach(c => {
+        if(c.categories){
+          c.categories = c.categories.map(x => x === oldName ? newName : x);
         }
+      });
+      saveClients();
+    }
+    closeEditCat();
+    showToast('Categoría actualizada','check');
+    renderCategoriesView();
+    if(currentView === 'clients') renderClients();
+  });
 
-        function guardarDB() {
-            localStorage.setItem('galvanissa_db', JSON.stringify(db));
-        }
+  // ===== TEMPLATE =====
+  const templateText = $('#templateText');
+  templateText.value = localStorage.getItem(TPL_KEY) || 'Hola {{Nombre}}, te escribo desde Atlas CRM. ¡Que tengas un excelente día!';
 
-        // --- CONTROL DEL MENÚ LATERAL ---
-        function toggleDrawer() {
-            document.getElementById('side-drawer').classList.toggle('active');
-            document.getElementById('drawer-backdrop').classList.toggle('active');
-        }
+  $$('.var-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const v = chip.dataset.var;
+      const start = templateText.selectionStart;
+      const end = templateText.selectionEnd;
+      templateText.value = templateText.value.slice(0,start) + v + templateText.value.slice(end);
+      templateText.focus();
+      templateText.setSelectionRange(start + v.length, start + v.length);
+      updateTemplatePreview();
+    });
+    // Drag for desktop
+    chip.draggable = true;
+    chip.addEventListener('dragstart', e => e.dataTransfer.setData('text/plain', chip.dataset.var));
+  });
+  templateText.addEventListener('dragover', e => e.preventDefault());
+  templateText.addEventListener('drop', e => {
+    e.preventDefault();
+    const text = e.dataTransfer.getData('text/plain');
+    const start = templateText.selectionStart;
+    templateText.value = templateText.value.slice(0,start) + text + templateText.value.slice(start);
+    updateTemplatePreview();
+  });
+  templateText.addEventListener('input', updateTemplatePreview);
 
-        // --- CONTROL DEL MODAL ---
-        function abrirModal(htmlInterno) {
-            document.getElementById('modal-content').innerHTML = htmlInterno;
-            document.getElementById('modal-backdrop').classList.add('active');
-        }
-        function cerrarModal() {
-            document.getElementById('modal-backdrop').classList.remove('active');
-        }
+  function updateTemplatePreview(){
+    const sample = {
+      name:'María', lastname:'González', address:'Calle Mayor 23, Madrid', phone:'+34 600 123 456'
+    };
+    const preview = templateText.value
+      .replaceAll('{{Nombre}}', sample.name)
+      .replaceAll('{{Apellido}}', sample.lastname)
+      .replaceAll('{{Dirección}}', sample.address)
+      .replaceAll('{{Teléfono}}', sample.phone);
+    $('#templatePreview').textContent = preview || '—';
+  }
+  $('#saveTemplate').addEventListener('click', () => {
+    localStorage.setItem(TPL_KEY, templateText.value);
+    showToast('Plantilla guardada','check');
+  });
 
-        // --- FUNCIONES DE RENDERIZADO PRINCIPAL ---
-        function cambiarVista(vista) {
-            if (document.getElementById('side-drawer').classList.contains('active')) toggleDrawer();
+  // ===== PORTABILITY CSV =====
+  $('#exportCsv').addEventListener('click', () => {
+    if(!clients.length){ showToast('No hay contactos para exportar','exclamation'); return; }
+    const headers = ['name','lastname','phone','address','categories','projectAddress','projectStatus','createdAt','updatedAt'];
+    const rows = clients.map(c => [
+      c.name||'', c.lastname||'', c.phone||'', c.address||'',
+      (c.categories||[]).join('|'),
+      c.projectAddress||'', c.projectStatus||'',
+      c.createdAt||'', c.updatedAt||''
+    ]);
+    let csv = headers.join(',') + '\n';
+    rows.forEach(r => { csv += r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',') + '\n'; });
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `atlas_clientes_${new Date().toISOString().slice(0,10)}.csv`;
+    link.click();
+    showToast('CSV exportado','file-export');
+  });
 
-            document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('active'));
-            const btns = document.querySelectorAll('.nav-link');
-            let index = ['inicio', 'clientes', 'proyectos', 'reportes', 'ajustes'].indexOf(vista);
-            if (btns[index]) btns[index].classList.add('active');
-
-            const content = document.getElementById('app-content');
-            const fab = document.getElementById('fab');
-            
-            if (vista === 'inicio') {
-                content.innerHTML = `
-                    <h2 class="text-lg font-bold text-slate-800 mb-4 mt-2">Resumen Rápido</h2>
-                    <div class="bg-red-50 border border-red-100 p-4 rounded-2xl mb-4">
-                        <p class="font-semibold text-red-700 flex items-center gap-2 text-sm"><i class="fas fa-exclamation-circle"></i> ¡Atención!</p>
-                        <p class="text-xs text-red-500 mt-1">Aquí aparecerán cotizaciones y proyectos por cerrar en los próximos 7 días.</p>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3 mb-6">
-                        <div class="card p-4 rounded-2xl text-center">
-                            <p class="text-3xl font-extrabold text-blue-900">${db.clientes.length}</p>
-                            <p class="text-xs text-slate-500 mt-1 font-medium">Clientes Totales</p>
-                        </div>
-                        <div class="card p-4 rounded-2xl text-center">
-                            <p class="text-3xl font-extrabold text-slate-700">${db.productos.length}</p>
-                            <p class="text-xs text-slate-500 mt-1 font-medium">Productos</p>
-                        </div>
-                    </div>
-
-                    <!-- Buscador de Clientes -->
-                    <h3 class="text-sm font-bold text-slate-600 mb-2">Búsqueda Rápida</h3>
-                    <div class="relative mb-3">
-                        <input type="text" id="search-input" oninput="buscarClienteInicio()" placeholder="Nombre o SAP del cliente..." class="w-full p-3 pl-10 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-transparent">
-                        <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                    </div>
-                    <div id="search-results" class="space-y-2"></div>
-                `;
-                fab.classList.add('hidden');
-                document.getElementById('search-results').innerHTML = `<p class="text-xs text-slate-400 text-center py-4">Escribe para buscar un cliente.</p>`;
-            } 
-            else if (vista === 'clientes') {
-                let html = `<h2 class="text-lg font-bold text-slate-800 mb-4 mt-2">Mis Clientes</h2>`;
-                if (db.clientes.length === 0) {
-                    html += `<div class="text-center mt-16 text-slate-400">
-                                <i class="fas fa-user-plus text-5xl mb-4"></i>
-                                <p class="font-medium">No hay clientes agregados.</p>
-                                <p class="text-xs mt-2">Toca el botón azul (+) para empezar.</p>
-                             </div>`;
-                } else {
-                    db.clientes.forEach(c => {
-                        html += `
-                            <div onclick="verCliente(${c.id})" class="card p-4 rounded-2xl mb-3 flex justify-between items-center active:bg-slate-50 cursor-pointer transition">
-                                <div class="flex-1">
-                                    <h3 class="font-semibold text-slate-800">${c.nombre}</h3>
-                                    <p class="text-xs text-slate-400 mb-2">SAP: ${c.numeroSAP || 'N/A'}</p>
-                                    <div>
-                                        ${c.categorias.map(cat => `<span class="text-[10px] bg-slate-100 text-slate-600 px-2 py-1 rounded-md mr-1 font-medium">${cat}</span>`).join('')}
-                                    </div>
-                                </div>
-                                <i class="fas fa-chevron-right text-slate-300 mr-2"></i>
-                            </div>
-                        `;
-                    });
-                }
-                content.innerHTML = html;
-                fab.classList.remove('hidden');
-                fab.onclick = abrirModalCliente;
-            } 
-            else if (vista === 'proyectos') {
-                let html = `<h2 class="text-lg font-bold text-slate-800 mb-4 mt-2">Proyectos y Obras</h2>`;
-                let totalProyectos = 0;
-                db.clientes.forEach(c => {
-                    if(c.proyectos && c.proyectos.length > 0) {
-                        c.proyectos.forEach(p => {
-                            totalProyectos++;
-                            html += `
-                                <div class="card p-4 rounded-2xl mb-3">
-                                    <h3 class="font-semibold text-slate-800">${p.nombreProyecto}</h3>
-                                    <p class="text-xs text-slate-400 mb-1">Cliente: ${c.nombre}</p>
-                                    <p class="text-xs text-slate-400 mb-2">Cierra: ${p.fechaEstimadaCierre || 'N/A'}</p>
-                                    <span class="text-[10px] bg-yellow-50 text-yellow-700 px-2 py-1 rounded-md font-medium">${p.estado || 'En Proceso'}</span>
-                                </div>
-                            `;
-                        });
-                    }
-                });
-                if (totalProyectos === 0) html += `<div class="text-center mt-16 text-slate-400"><i class="fas fa-hard-hat text-5xl mb-4"></i><p class="font-medium">No hay proyectos agregados.</p></div>`;
-                content.innerHTML = html;
-                fab.classList.remove('hidden');
-                fab.onclick = () => abrirModalInfo("Para agregar un proyecto, primero entra a la ficha del cliente.");
+  $('#importCsv').addEventListener('click', () => $('#csvFileInput').click());
+  $('#csvFileInput').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if(!file) return;
+    Papa.parse(file, {
+      header:true,
+      skipEmptyLines:true,
+      complete: results => {
+        let imported = 0, updated = 0;
+        results.data.forEach(row => {
+          if(!row.name && !row.phone) return;
+          const cats = row.categories ? String(row.categories).split('|').map(s=>s.trim()).filter(Boolean) : [];
+          cats.forEach(cn => {
+            if(!categories.find(c => c.name === cn)){
+              categories.push({ name:cn, color:'#1B4332', protected:false });
             }
-            else if (vista === 'reportes') {
-                content.innerHTML = `
-                    <h2 class="text-lg font-bold text-slate-800 mb-4 mt-2">Reportes</h2>
-                    <div class="text-center mt-16 text-slate-400">
-                        <i class="fas fa-chart-bar text-5xl mb-4"></i>
-                        <p class="font-medium">Módulo de análisis en desarrollo.</p>
-                    </div>
-                `;
-                fab.classList.add('hidden');
-            }
-            else if (vista === 'ajustes') {
-                content.innerHTML = `
-                    <h2 class="text-lg font-bold text-slate-800 mb-4 mt-2">Configuración</h2>
-                    <div class="card p-4 rounded-2xl mb-4">
-                        <h3 class="font-semibold text-slate-700 mb-3 flex items-center gap-2 text-sm"><i class="fas fa-box text-blue-900"></i> Productos</h3>
-                        <div class="flex gap-2 mb-3">
-                            <input type="text" id="nuevoProducto" placeholder="Ej: Hierromax" class="border border-slate-200 p-2 rounded-lg flex-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-transparent">
-                            <button onclick="agregarProducto()" class="bg-slate-800 text-white px-4 rounded-lg text-sm font-medium">Agregar</button>
-                        </div>
-                        <div class="flex flex-wrap gap-2">
-                            ${db.productos.map(p => `<span class="bg-slate-100 px-3 py-1 rounded-lg text-xs flex items-center gap-2 text-slate-700">${p} <button onclick="eliminarProducto('${p}')" class="text-red-400 hover:text-red-600 font-bold">x</button></span>`).join('')}
-                        </div>
-                    </div>
-                    <div class="card p-4 rounded-2xl">
-                        <h3 class="font-semibold text-slate-700 mb-3 flex items-center gap-2 text-sm"><i class="fas fa-tags text-blue-900"></i> Categorías</h3>
-                        <div class="flex gap-2 mb-3">
-                            <input type="text" id="nuevaCategoria" placeholder="Ej: Retail" class="border border-slate-200 p-2 rounded-lg flex-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-900 focus:border-transparent">
-                            <button onclick="agregarCategoria()" class="bg-slate-800 text-white px-4 rounded-lg text-sm font-medium">Agregar</button>
-                        </div>
-                        <div class="flex flex-wrap gap-2">
-                            ${db.categorias.map(c => `<span class="bg-slate-100 px-3 py-1 rounded-lg text-xs flex items-center gap-2 text-slate-700">${c} <button onclick="eliminarCategoria('${c}')" class="text-red-400 hover:text-red-600 font-bold">x</button></span>`).join('')}
-                        </div>
-                    </div>
-                `;
-                fab.classList.add('hidden');
-            }
-        }
+          });
+          const data = {
+            id: uid(),
+            name: row.name||'',
+            lastname: row.lastname||'',
+            phone: row.phone||'',
+            address: row.address||'',
+            categories: cats,
+            projectAddress: row.projectAddress||'',
+            projectStatus: row.projectStatus||'',
+            createdAt: Date.now(),
+            updatedAt: Date.now()
+          };
+          const idx = clients.findIndex(c => c.phone === data.phone && data.phone);
+          if(idx !== -1){ data.id = clients[idx].id; data.createdAt = clients[idx].createdAt; clients[idx] = data; updated++; }
+          else { clients.unshift(data); imported++; }
+        });
+        saveClients(); saveCats();
+        renderCategoriesView(); renderClients(); renderHome(); updateBadges();
+        showToast(`${imported} importados, ${updated} actualizados`,`file-import`);
+      },
+      error: err => showToast('Error al leer CSV','exclamation')
+    });
+    e.target.value = '';
+  });
 
-        // --- BUSCADOR EN INICIO ---
-        function buscarClienteInicio() {
-            const q = document.getElementById('search-input').value.toLowerCase();
-            const resultsDiv = document.getElementById('search-results');
-            
-            if (!q) {
-                resultsDiv.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">Escribe para buscar un cliente.</p>`;
-                return;
-            }
+  // ===== BADGES =====
+  function updateBadges(){
+    $('#clientCountBadge').textContent = clients.length;
+    $('#catCountBadge').textContent = categories.length;
+  }
 
-            const found = db.clientes.filter(c => c.nombre.toLowerCase().includes(q) || (c.numeroSAP && c.numeroSAP.toLowerCase().includes(q)));
-            
-            if (found.length === 0) {
-                resultsDiv.innerHTML = `<p class="text-xs text-red-400 text-center py-4">No se encontraron clientes.</p>`;
-                return;
-            }
+  // ===== DATE =====
+  function setTodayDate(){
+    const now = new Date();
+    const s = now.toLocaleDateString('es-ES', {weekday:'long', day:'numeric', month:'long'});
+    $('#todayDate').textContent = s.charAt(0).toUpperCase() + s.slice(1);
+  }
 
-            let html = '';
-            found.forEach(c => {
-                html += `
-                    <div onclick="verCliente(${c.id})" class="card p-3 rounded-xl flex justify-between items-center active:bg-slate-50 cursor-pointer">
-                        <div>
-                            <h3 class="font-semibold text-slate-800 text-sm">${c.nombre}</h3>
-                            <p class="text-[11px] text-slate-400">SAP: ${c.numeroSAP || 'N/A'}</p>
-                        </div>
-                        <i class="fas fa-arrow-right text-slate-300 text-sm"></i>
-                    </div>
-                `;
-            });
-            resultsDiv.innerHTML = html;
-        }
+  // ===== SEED =====
+  function seedIfEmpty(){
+    if(clients.length === 0){
+      const now = Date.now();
+      clients = [
+        { id:uid(), name:'María', lastname:'González', phone:'+34611123456', address:'Calle Mayor 23, Madrid', categories:['VIP'], createdAt: now-86400000*2, updatedAt: now-86400000*2 },
+        { id:uid(), name:'Carlos', lastname:'Ruiz', phone:'+34622345678', address:'Av. Diagonal 456, Barcelona', categories:['Proyectos','VIP'], projectAddress:'Av. Diagonal 456', projectStatus:'Cimentación', createdAt: now-86400000, updatedAt: now-3600000 },
+        { id:uid(), name:'Lucía', lastname:'Fernández', phone:'+34633456789', address:'Plaza del Pilar 12, Zaragoza', categories:['Lead'], createdAt: now-7200000, updatedAt: now-7200000 }
+      ];
+      saveClients();
+    }
+  }
 
-        // --- VISTA DE DETALLE DEL CLIENTE ---
-        function verCliente(id) {
-            const cliente = db.clientes.find(c => c.id === id);
-            if (!cliente) return;
+  // ===== INIT =====
+  initCategories();
+  seedIfEmpty();
+  setTodayDate();
+  renderHome();
+  updateBadges();
 
-            const content = document.getElementById('app-content');
-            const fab = document.getElementById('fab');
-            fab.classList.add('hidden');
-
-            let htmlCompras = "";
-            if (cliente.compras && cliente.compras.length > 0) {
-                cliente.compras.forEach(com => {
-                    htmlCompras += `
-                        <div class="bg-gray-50 p-3 rounded-xl mb-2 border border-slate-100">
-                            <p class="text-xs text-slate-400 mb-1">Fecha: ${com.fecha}</p>
-                            <p class="text-sm font-medium text-slate-700">${com.productos.join(', ')}</p>
-                            <p class="text-sm text-blue-900 font-bold mt-1">$${com.montoAprox}</p>
-                        </div>
-                    `;
-                });
-            } else {
-                htmlCompras = `<p class="text-xs text-slate-400 text-center py-4">Sin compras registradas</p>`;
-            }
-
-            let htmlCotizaciones = "";
-            if (cliente.cotizaciones && cliente.cotizaciones.length > 0) {
-                cliente.cotizaciones.forEach(cot => {
-                    htmlCotizaciones += `
-                        <div class="bg-gray-50 p-3 rounded-xl mb-2 border border-slate-100">
-                            <div class="flex justify-between items-center">
-                                <p class="text-xs text-slate-400">Cierre: ${cot.fechaEstimadaCierre}</p>
-                                <span class="text-[10px] bg-blue-50 text-blue-900 px-2 py-1 rounded-md font-medium">${cot.estado}</span>
-                            </div>
-                            <p class="text-sm text-slate-600 mt-1">${cot.notas}</p>
-                        </div>
-                    `;
-                });
-            } else {
-                htmlCotizaciones = `<p class="text-xs text-slate-400 text-center py-4">Sin cotizaciones registradas</p>`;
-            }
-
-            let htmlProyectos = "";
-            if (cliente.proyectos && cliente.proyectos.length > 0) {
-                cliente.proyectos.forEach(pro => {
-                    htmlProyectos += `
-                        <div class="bg-gray-50 p-3 rounded-xl mb-2 border border-slate-100">
-                            <h4 class="font-semibold text-slate-800 text-sm">${pro.nombreProyecto}</h4>
-                            <p class="text-xs text-slate-400 mt-1">Dueño: ${pro.nombreDueno}</p>
-                            <div class="flex justify-between items-center mt-2">
-                                <a href="tel:${pro.telefonoDueno}" class="text-xs text-blue-900 font-bold flex items-center gap-1"><i class="fas fa-phone text-[10px]"></i> Llamar Dueño</a>
-                                <span class="text-[10px] bg-yellow-50 text-yellow-700 px-2 py-1 rounded-md font-medium">${pro.estado}</span>
-                            </div>
-                        </div>
-                    `;
-                });
-            } else {
-                htmlProyectos = `<p class="text-xs text-slate-400 text-center py-4">Sin proyectos registrados</p>`;
-            }
-
-            content.innerHTML = `
-                <button onclick="cambiarVista('clientes')" class="text-blue-900 font-medium mb-4 mt-2 flex items-center gap-2 text-sm active:scale-95 transition">
-                    <i class="fas fa-arrow-left"></i> Volver
-                </button>
-
-                <div class="card p-5 rounded-2xl mb-4">
-                    <h2 class="text-xl font-bold text-slate-800">${cliente.nombre}</h2>
-                    <p class="text-sm text-slate-400 mt-1">SAP: ${cliente.numeroSAP || 'N/A'}</p>
-                    <div class="mt-2 mb-4">
-                        ${cliente.categorias.map(cat => `<span class="text-[10px] bg-slate-100 text-slate-600 px-2 py-1 rounded-md mr-1 font-medium">${cat}</span>`).join('')}
-                    </div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <a href="tel:${cliente.telefono}" class="bg-slate-800 text-white py-2.5 rounded-xl text-center text-sm font-medium flex items-center justify-center gap-2 active:scale-95 transition">
-                            <i class="fas fa-phone-alt"></i> Llamar
-                        </a>
-                        <a href="https://wa.me/${cliente.telefono}?text=Hola%20${cliente.nombre.replace(/ /g, '%20')}" target="_blank" class="bg-blue-900 text-white py-2.5 rounded-xl text-center text-sm font-medium flex items-center justify-center gap-2 active:scale-95 transition">
-                            <i class="fab fa-whatsapp"></i> WhatsApp
-                        </a>
-                    </div>
-                </div>
-
-                <div class="card p-4 rounded-2xl mb-4">
-                    <div class="flex justify-between items-center mb-3">
-                        <h3 class="font-semibold text-slate-700 flex items-center gap-2 text-sm"><i class="fas fa-shopping-cart text-slate-400"></i> Compras</h3>
-                        <button onclick="abrirModalCompra(${cliente.id})" class="text-white bg-blue-900 w-7 h-7 rounded-lg flex items-center justify-center text-sm active:scale-90">+</button>
-                    </div>
-                    ${htmlCompras}
-                </div>
-
-                <div class="card p-4 rounded-2xl mb-4">
-                    <div class="flex justify-between items-center mb-3">
-                        <h3 class="font-semibold text-slate-700 flex items-center gap-2 text-sm"><i class="fas fa-file-invoice text-slate-400"></i> Cotizaciones</h3>
-                        <button onclick="abrirModalCotizacion(${cliente.id})" class="text-white bg-blue-900 w-7 h-7 rounded-lg flex items-center justify-center text-sm active:scale-90">+</button>
-                    </div>
-                    ${htmlCotizaciones}
-                </div>
-
-                <div class="card p-4 rounded-2xl mb-4">
-                    <div class="flex justify-between items-center mb-3">
-                        <h3 class="font-semibold text-slate-700 flex items-center gap-2 text-sm"><i class="fas fa-hard-hat text-slate-400"></i> Proyectos</h3>
-                        <button onclick="abrirModalProyecto(${cliente.id})" class="text-white bg-blue-900 w-7 h-7 rounded-lg flex items-center justify-center text-sm active:scale-90">+</button>
-                    </div>
-                    ${htmlProyectos}
-                </div>
-            `;
-            window.scrollTo(0, 0);
-        }
-
-        // --- MODALES (Formularios) ---
-
-        function abrirModalInfo(mensaje) {
-            abrirModal(`
-                <div class="text-center">
-                    <i class="fas fa-info-circle text-blue-900 text-3xl mb-4"></i>
-                    <h3 class="text-lg font-bold text-slate-800 mb-2">Información</h3>
-                    <p class="text-sm text-slate-500 mb-6">${mensaje}</p>
-                    <button onclick="cerrarModal()" class="w-full bg-slate-800 text-white py-2 rounded-xl font-medium active:scale-95 transition">Entendido</button>
-                </div>
-            `);
-        }
-
-        function abrirModalCliente() {
-            abrirModal(`
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-bold text-slate-800">Nuevo Cliente</h3>
-                    <button onclick="cerrarModal()" class="text-slate-400 hover:text-slate-800"><i class="fas fa-times"></i></button>
-                </div>
-                <div class="space-y-3">
-                    <div>
-                        <label class="text-xs font-medium text-slate-500">Nombre / Empresa*</label>
-                        <input type="text" id="modal-nombre" class="w-full mt-1 border border-slate-200 p-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-900">
-                    </div>
-                    <div>
-                        <label class="text-xs font-medium text-slate-500">Teléfono*</label>
-                        <input type="tel" id="modal-tel" placeholder="52123..." class="w-full mt-1 border border-slate-200 p-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-900">
-                    </div>
-                    <div>
-                        <label class="text-xs font-medium text-slate-500">Número SAP</label>
-                        <input type="text" id="modal-sap" class="w-full mt-1 border border-slate-200 p-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-900">
-                    </div>
-                </div>
-                <button onclick="guardarCliente()" class="w-full bg-blue-900 text-white py-2.5 rounded-xl font-medium mt-6 active:scale-95 transition">Guardar Cliente</button>
-            `);
-        }
-
-        function guardarCliente() {
-            const nombre = document.getElementById('modal-nombre').value.trim();
-            const tel = document.getElementById('modal-tel').value.trim();
-            const sap = document.getElementById('modal-sap').value.trim();
-            
-            if(!nombre || !tel) {
-                abrirModalInfo("El nombre y el teléfono son obligatorios.");
-                return;
-            }
-
-            db.clientes.push({
-                id: Date.now(),
-                nombre: nombre,
-                telefono: tel,
-                numeroSAP: sap,
-                categorias: ["Nuevo"],
-                compras: [],
-                cotizaciones: [],
-                proyectos: []
-            });
-            guardarDB();
-            cerrarModal();
-            cambiarVista('clientes');
-        }
-
-        function abrirModalCompra(id) {
-            let checkboxes = db.productos.map(p => `
-                <label class="flex items-center gap-2 text-sm text-slate-600 bg-slate-50 p-2 rounded-lg cursor-pointer w-full">
-                    <input type="checkbox" value="${p}" class="product-checkbox accent-blue-900 w-4 h-4"> ${p}
-                </label>
-            `).join('');
-
-            abrirModal(`
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-bold text-slate-800">Registrar Compra</h3>
-                    <button onclick="cerrarModal()" class="text-slate-400 hover:text-slate-800"><i class="fas fa-times"></i></button>
-                </div>
-                <div class="space-y-3">
-                    <div>
-                        <label class="text-xs font-medium text-slate-500">Fecha de Compra*</label>
-                        <input type="date" id="com-fecha" class="w-full mt-1 border border-slate-200 p-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-900">
-                    </div>
-                    <div>
-                        <label class="text-xs font-medium text-slate-500 block mb-1">Productos Comprados*</label>
-                        <div class="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-1 border border-slate-100 rounded-lg">
-                            ${checkboxes}
-                        </div>
-                    </div>
-                    <div>
-                        <label class="text-xs font-medium text-slate-500">Monto Aproximado ($)*</label>
-                        <input type="number" id="com-monto" class="w-full mt-1 border border-slate-200 p-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-900">
-                    </div>
-                </div>
-                <button onclick="guardarCompra(${id})" class="w-full bg-blue-900 text-white py-2.5 rounded-xl font-medium mt-6 active:scale-95 transition">Guardar Compra</button>
-            `);
-        }
-
-        function guardarCompra(id) {
-            const cliente = db.clientes.find(c => c.id === id);
-            const fecha = document.getElementById('com-fecha').value;
-            const monto = document.getElementById('com-monto').value;
-            const productosElegidos = Array.from(document.querySelectorAll('.product-checkbox:checked')).map(el => el.value);
-
-            if(!fecha || !monto || productosElegidos.length === 0) {
-                abrirModalInfo("Completa todos los campos de la compra.");
-                return;
-            }
-
-            cliente.compras.push({
-                fecha: fecha,
-                productos: productosElegidos,
-                montoAprox: monto
-            });
-            guardarDB();
-            cerrarModal();
-            verCliente(id);
-        }
-
-        function abrirModalCotizacion(id) {
-            abrirModal(`
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-bold text-slate-800">Nueva Cotización</h3>
-                    <button onclick="cerrarModal()" class="text-slate-400 hover:text-slate-800"><i class="fas fa-times"></i></button>
-                </div>
-                <div class="space-y-3">
-                    <div>
-                        <label class="text-xs font-medium text-slate-500">Fecha de Hoy*</label>
-                        <input type="date" id="cot-fecha" class="w-full mt-1 border border-slate-200 p-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-900">
-                    </div>
-                    <div>
-                        <label class="text-xs font-medium text-slate-500">Fecha Estimada de Cierre*</label>
-                        <input type="date" id="cot-cierre" class="w-full mt-1 border border-slate-200 p-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-900">
-                    </div>
-                    <div>
-                        <label class="text-xs font-medium text-slate-500">Notas</label>
-                        <textarea id="cot-notas" rows="3" class="w-full mt-1 border border-slate-200 p-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-900"></textarea>
-                    </div>
-                    <div>
-                        <label class="text-xs font-medium text-slate-500">Estado</label>
-                        <select id="cot-estado" class="w-full mt-1 border border-slate-200 p-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-900 bg-white">
-                            <option>En Proceso</option>
-                            <option>En Espera</option>
-                            <option>Cerrado</option>
-                            <option>Perdido</option>
-                        </select>
-                    </div>
-                </div>
-                <button onclick="guardarCotizacion(${id})" class="w-full bg-blue-900 text-white py-2.5 rounded-xl font-medium mt-6 active:scale-95 transition">Guardar Cotización</button>
-            `);
-        }
-
-        function guardarCotizacion(id) {
-            const cliente = db.clientes.find(c => c.id === id);
-            const fecha = document.getElementById('cot-fecha').value;
-            const cierre = document.getElementById('cot-cierre').value;
-            const notas = document.getElementById('cot-notas').value;
-            const estado = document.getElementById('cot-estado').value;
-
-            if(!fecha || !cierre) {
-                abrirModalInfo("Las fechas son obligatorias.");
-                return;
-            }
-
-            cliente.cotizaciones.push({
-                id: Date.now(),
-                fecha: fecha,
-                fechaEstimadaCierre: cierre,
-                notas: notas,
-                estado: estado,
-                imagenBase64: ""
-            });
-            guardarDB();
-            cerrarModal();
-            verCliente(id);
-        }
-
-        function abrirModalProyecto(id) {
-            abrirModal(`
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-bold text-slate-800">Nuevo Proyecto / Obra</h3>
-                    <button onclick="cerrarModal()" class="text-slate-400 hover:text-slate-800"><i class="fas fa-times"></i></button>
-                </div>
-                <div class="space-y-3">
-                    <div>
-                        <label class="text-xs font-medium text-slate-500">Nombre del Proyecto*</label>
-                        <input type="text" id="pro-nombre" class="w-full mt-1 border border-slate-200 p-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-900">
-                    </div>
-                    <div>
-                        <label class="text-xs font-medium text-slate-500">Nombre del Dueño*</label>
-                        <input type="text" id="pro-dueno" class="w-full mt-1 border border-slate-200 p-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-900">
-                    </div>
-                    <div>
-                        <label class="text-xs font-medium text-slate-500">Teléfono del Dueño*</label>
-                        <input type="tel" id="pro-tel" class="w-full mt-1 border border-slate-200 p-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-900">
-                    </div>
-                    <div>
-                        <label class="text-xs font-medium text-slate-500">Dirección Escrita</label>
-                        <input type="text" id="pro-dir" class="w-full mt-1 border border-slate-200 p-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-900">
-                    </div>
-                    <div>
-                        <label class="text-xs font-medium text-slate-500">Fecha Estimada de Cierre*</label>
-                        <input type="date" id="pro-cierre" class="w-full mt-1 border border-slate-200 p-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-900">
-                    </div>
-                    <div>
-                        <label class="text-xs font-medium text-slate-500">Estado</label>
-                        <select id="pro-estado" class="w-full mt-1 border border-slate-200 p-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-900 bg-white">
-                            <option>En Proceso</option>
-                            <option>En Espera</option>
-                            <option>Cerrado</option>
-                            <option>Perdido</option>
-                        </select>
-                    </div>
-                </div>
-                <button onclick="guardarProyecto(${id})" class="w-full bg-blue-900 text-white py-2.5 rounded-xl font-medium mt-6 active:scale-95 transition">Guardar Proyecto</button>
-            `);
-        }
-
-        function guardarProyecto(id) {
-            const cliente = db.clientes.find(c => c.id === id);
-            const nombre = document.getElementById('pro-nombre').value.trim();
-            const dueno = document.getElementById('pro-dueno').value.trim();
-            const tel = document.getElementById('pro-tel').value.trim();
-            const dir = document.getElementById('pro-dir').value.trim();
-            const cierre = document.getElementById('pro-cierre').value;
-            const estado = document.getElementById('pro-estado').value;
-
-            if(!nombre || !dueno || !tel || !cierre) {
-                abrirModalInfo("Completa los campos obligatorios (*).");
-                return;
-            }
-
-            cliente.proyectos.push({
-                id: Date.now(),
-                nombreProyecto: nombre,
-                nombreDueno: dueno,
-                telefonoDueno: tel,
-                direccionEscrita: dir,
-                fechaEstimadaCierre: cierre,
-                estado: estado,
-                visitas: []
-            });
-            guardarDB();
-            cerrarModal();
-            verCliente(id);
-        }
-
-        // --- FUNCIONES DE AJUSTES ---
-        function agregarProducto() {
-            const input = document.getElementById('nuevoProducto');
-            if (input.value.trim() !== "") {
-                db.productos.push(input.value.trim());
-                guardarDB();
-                input.value = "";
-                cambiarVista('ajustes');
-            }
-        }
-
-        function eliminarProducto(producto) {
-            db.productos = db.productos.filter(p => p !== producto);
-            guardarDB();
-            cambiarVista('ajustes');
-        }
-
-        function agregarCategoria() {
-            const input = document.getElementById('nuevaCategoria');
-            if (input.value.trim() !== "") {
-                db.categorias.push(input.value.trim());
-                guardarDB();
-                input.value = "";
-                cambiarVista('ajustes');
-            }
-        }
-
-        function eliminarCategoria(cat) {
-            db.categorias = db.categorias.filter(c => c !== cat);
-            guardarDB();
-            cambiarVista('ajustes');
-        }
-
-        // Iniciar app
-        cambiarVista('inicio');
-    </script>
+  // ESC
+  document.addEventListener('keydown', e => {
+    if(e.key === 'Escape'){
+      if($('#delSheet').classList.contains('open')) closeDel();
+      else if($('#editCatSheet').classList.contains('open')) closeEditCat();
+      else if($('#modal').classList.contains('open')) closeModal();
+      else if($('#drawer').classList.contains('open')) closeDrawer();
+    }
+  });
+</script>
 </body>
 </html>
