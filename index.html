@@ -139,6 +139,9 @@
                 </button>
             </div>
 
+            <!-- DASHBOARD ESTADÍSTICAS GLOBAL -->
+            <div id="global-stats" class="mb-8"></div>
+
             <div class="mb-6">
                 <div class="relative">
                     <input type="text" id="client-search" placeholder="Buscar por nombre, apellidos, teléfono, dirección o categoría..." class="w-full px-4 py-3 pl-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 shadow-sm text-base">
@@ -277,7 +280,6 @@
             <input id="clientName" class="w-full border rounded px-3 py-2 text-sm text-base" placeholder="Nombre del cliente">
             <input id="clientPhone" class="w-full border rounded px-3 py-2 text-sm text-base" placeholder="Teléfono del cliente">
             
-            <!-- SELECT COTIZACIÓN ASOCIADA -->
             <div id="projectQuoteContainer" class="hidden">
                 <label class="block text-xs font-semibold text-gray-600 mb-1">Cotización Asociada (Opcional)</label>
                 <select id="projectQuoteSelect" class="w-full border rounded px-3 py-2 text-sm text-base bg-white">
@@ -321,7 +323,6 @@
                 <input type="hidden" id="quoteClientId">
             </div>
 
-            <!-- SELECT PROYECTO ASOCIADO -->
             <div id="quoteProjectContainer" class="hidden">
                 <label class="block text-xs font-semibold text-gray-600 mb-1">Asociar a Proyecto en Mapa (Opcional)</label>
                 <select id="quoteProjectSelect" class="w-full border rounded px-3 py-2 text-sm text-base bg-white">
@@ -634,6 +635,42 @@
                 loadAndDisplayClients();
             } catch (e) { showMessage("Error al guardar."); }
         }
+        
+        // ESTADÍSTICAS GLOBALES Y RENDERIZADO DE LISTA
+        function getTopProductsGlobal() {
+            const quotes = JSON.parse(localStorage.getItem('quotes') || '[]');
+            const productCounts = {};
+            quotes.filter(q => q.status === 'cerrada').forEach(q => {
+                q.materials.forEach(m => {
+                    productCounts[m] = (productCounts[m] || 0) + 1;
+                });
+            });
+            return Object.entries(productCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+        }
+
+        function renderGlobalStats() {
+            const topProducts = getTopProductsGlobal();
+            const statsDiv = document.getElementById('global-stats');
+            if (topProducts.length === 0) {
+                statsDiv.innerHTML = '';
+                return;
+            }
+            statsDiv.innerHTML = `
+                <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4">
+                    <h3 class="text-sm font-bold text-indigo-800 mb-3 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+                        </svg>
+                        Top 5 Productos Más Vendidos (Global)
+                    </h3>
+                    <div class="flex flex-wrap gap-2">
+                        ${topProducts.map(p => `<span class="bg-white px-3 py-1.5 rounded-full text-xs font-medium text-indigo-700 shadow-sm">${p[0]} (${p[1]})</span>`).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
         function loadAndDisplayClients(searchTerm = '') {
             try {
                 allClients = JSON.parse(localStorage.getItem('clients') || '[]');
@@ -688,8 +725,10 @@
                     card.appendChild(left); card.appendChild(wa);
                     clientsList.appendChild(card);
                 });
+                renderGlobalStats();
             } catch (e) { console.error(e); }
         }
+        
         function openClientDetail(id) {
             const c = allClients.find(x => x.id === id);
             if (!c) return;
@@ -734,8 +773,18 @@
                             </div>
 
                             <div class="space-y-3">
-                                <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wide">Cotizaciones Realizadas</h3>
-                                <div id="view-quotes-list" class="space-y-3"></div>
+                                <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wide">Cotizaciones Abiertas</h3>
+                                <div id="view-open-quotes-list" class="space-y-3"></div>
+                            </div>
+
+                            <div class="space-y-3">
+                                <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wide">Historial de Compras</h3>
+                                <div id="view-closed-quotes-list" class="space-y-3"></div>
+                            </div>
+
+                            <div class="space-y-3">
+                                <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wide">Estadísticas del Cliente</h3>
+                                <div id="view-client-stats" class="bg-gray-50 p-4 rounded-xl border text-sm text-gray-600"></div>
                             </div>
                         </div>
 
@@ -754,6 +803,8 @@
             document.getElementById('view-categories').textContent = (c.categories||[]).join(', ');
 
             const allQuotes = JSON.parse(localStorage.getItem('quotes') || '[]');
+            
+            // 1. Proyectos en mapa
             const linkedProjects = JSON.parse(localStorage.getItem('projects') || '[]').filter(p => p.clientId === c.id);
             linkedProjects.sort((a, b) => daysRemaining(a.closeDate) - daysRemaining(b.closeDate));
             
@@ -790,12 +841,15 @@
                 projectsListContainer.innerHTML = `<p class="text-sm text-gray-500 italic">Este cliente no tiene proyectos asociados en el mapa.</p>`;
             }
 
-            const linkedQuotes = allQuotes.filter(q => q.clientId === c.id);
-            linkedQuotes.sort((a, b) => new Date(a.closeDate) - new Date(b.closeDate));
-            
-            const quotesListContainer = document.getElementById('view-quotes-list');
-            if (linkedQuotes.length > 0) {
-                quotesListContainer.innerHTML = linkedQuotes.map(q => {
+            // 2. Separar Cotizaciones
+            const clientQuotes = allQuotes.filter(q => q.clientId === c.id);
+            const openQuotes = clientQuotes.filter(q => q.status !== 'cerrada');
+            const closedQuotes = clientQuotes.filter(q => q.status === 'cerrada');
+
+            // Renderizar Abiertas
+            const openQuotesContainer = document.getElementById('view-open-quotes-list');
+            if (openQuotes.length > 0) {
+                openQuotesContainer.innerHTML = openQuotes.map(q => {
                     const days = daysRemaining(q.closeDate);
                     const color = getMarkerColorByDays(days);
                     let colorClass = 'bg-green-100 text-green-800';
@@ -820,18 +874,84 @@
                         <div class="flex gap-2 pt-2 border-t border-emerald-800 mt-2">
                             <button onclick="openQuoteModal(null, ${q.id})" class="flex-1 bg-sky-600 hover:bg-sky-700 text-white py-1.5 rounded text-xs font-medium">Editar</button>
                             ${projectBtn}
-                            <button onclick="deleteQuote(${q.id})" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-1.5 rounded text-xs font-medium">Eliminar</button>
+                            <button onclick="toggleQuoteStatus(${q.id})" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-1.5 rounded text-xs font-medium">Cerrar (Vendido)</button>
+                            <button onclick="deleteQuote(${q.id})" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-1.5 rounded text-xs font-medium">Borrar</button>
                         </div>
                     </div>`;
                 }).join('');
             } else {
-                quotesListContainer.innerHTML = `<p class="text-sm text-gray-500 italic">Este cliente no tiene cotizaciones registradas.</p>`;
+                openQuotesContainer.innerHTML = `<p class="text-sm text-gray-500 italic">No hay cotizaciones abiertas.</p>`;
+            }
+
+            // Renderizar Cerradas (Historial)
+            const closedQuotesContainer = document.getElementById('view-closed-quotes-list');
+            if (closedQuotes.length > 0) {
+                closedQuotesContainer.innerHTML = closedQuotes.map(q => {
+                    return `
+                    <div class="rounded-xl bg-slate-700 text-slate-100 p-4 space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs bg-green-500 px-2 py-1 rounded-full font-bold text-white">Comprado</span>
+                            <span class="text-xs bg-slate-600 px-2 py-1 rounded-full font-bold">$${parseFloat(q.amount).toFixed(2)}</span>
+                        </div>
+                        <p><span class="font-medium text-slate-300">Cotización No:</span> ${q.quoteNumber || 'N/A'}</p>
+                        <p><span class="font-medium text-slate-300">Materiales:</span> ${q.materials.join(', ')}</p>
+                        <p><span class="font-medium text-slate-300">Fecha Cierre:</span> ${q.closedAt ? new Date(q.closedAt).toLocaleDateString() : 'N/A'}</p>
+                        <div class="flex gap-2 pt-2 border-t border-slate-600 mt-2">
+                            <button onclick="toggleQuoteStatus(${q.id})" class="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white py-1.5 rounded text-xs font-medium">Reabrir</button>
+                            <button onclick="deleteQuote(${q.id})" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-1.5 rounded text-xs font-medium">Borrar</button>
+                        </div>
+                    </div>`;
+                }).join('');
+            } else {
+                closedQuotesContainer.innerHTML = `<p class="text-sm text-gray-500 italic">Este cliente aún no tiene compras registradas.</p>`;
+            }
+
+            // 3. Estadísticas del Cliente
+            const statsContainer = document.getElementById('view-client-stats');
+            if (closedQuotes.length > 0) {
+                const productCounts = {};
+                closedQuotes.forEach(q => {
+                    q.materials.forEach(m => {
+                        productCounts[m] = (productCounts[m] || 0) + 1;
+                    });
+                });
+                const topProducts = Object.entries(productCounts).sort((a, b) => b[1] - a[1]);
+                const totalSpent = closedQuotes.reduce((sum, q) => sum + parseFloat(q.amount || 0), 0);
+
+                statsContainer.innerHTML = `
+                    <div class="mb-2"><strong>Total Comprado:</strong> $${totalSpent.toFixed(2)}</div>
+                    <div class="mb-1 font-semibold text-gray-700">Productos más comprados:</div>
+                    <div class="flex flex-wrap gap-2 mt-1">
+                        ${topProducts.map(p => `<span class="bg-indigo-100 text-indigo-700 text-xs px-2 py-1 rounded-full font-medium">${p[0]} (${p[1]})</span>`).join('')}
+                    </div>
+                `;
+            } else {
+                statsContainer.innerHTML = `<p class="italic text-gray-500">Sin compras cerradas para calcular estadísticas.</p>`;
             }
 
             document.getElementById('clientViewModal').classList.remove('hidden');
             document.getElementById('clientViewModal').classList.add('flex');
         }
         
+        window.toggleQuoteStatus = function(id) {
+            let quotes = JSON.parse(localStorage.getItem('quotes') || '[]');
+            const i = quotes.findIndex(q => q.id === id);
+            if (i !== -1) {
+                if (quotes[i].status === 'cerrada') {
+                    quotes[i].status = 'abierta';
+                    quotes[i].closedAt = null;
+                    showMessage('Cotización reabierta.');
+                } else {
+                    quotes[i].status = 'cerrada';
+                    quotes[i].closedAt = new Date().toISOString();
+                    showMessage('¡Cotización cerrada! Compra registrada en el historial.');
+                }
+                localStorage.setItem('quotes', JSON.stringify(quotes));
+                if (currentClientId) openClientDetail(currentClientId);
+                renderGlobalStats();
+            }
+        }
+
         window.goToMapProject = function(projectId) {
             closeClientViewModal();
             switchView('projects');
@@ -1056,7 +1176,6 @@
             clientResults.classList.add('hidden');
             clientSearchInput.value = '';
 
-            // Cargar cotizaciones en el select de proyectos
             const quotes = JSON.parse(localStorage.getItem('quotes') || '[]').filter(q => q.clientId === c.id);
             const select = document.getElementById('projectQuoteSelect');
             const container = document.getElementById('projectQuoteContainer');
@@ -1299,7 +1418,6 @@
             }
             saveProjects(projects);
 
-            // Actualizar la cotización para que tenga el projectId
             if (linkedQuoteId) {
                 let quotes = JSON.parse(localStorage.getItem('quotes') || '[]');
                 const qi = quotes.findIndex(q => q.id == linkedQuoteId);
@@ -1328,7 +1446,6 @@
             clientIdInput.value = p.clientId || '';
             clientNameInput.dataset.address = p.address || '';
             
-            // Cargar selects si hay cliente
             if (p.clientId) {
                 const c = getClients().find(c => c.id === p.clientId);
                 if (c) {
@@ -1365,7 +1482,6 @@
             let projects = getStoredProjects().filter(p => p.id !== id);
             saveProjects(projects);
             
-            // Limpiar referencia en cotizaciones
             let quotes = JSON.parse(localStorage.getItem('quotes') || '[]');
             quotes.forEach(q => { if(q.projectId == id) q.projectId = null; });
             localStorage.setItem('quotes', JSON.stringify(quotes));
@@ -1405,7 +1521,6 @@
             quoteClientSearch.value = `${c.name} ${c.lastname||''}`.trim();
             quoteClientResults.classList.add('hidden');
 
-            // Cargar proyectos del cliente
             const projects = getStoredProjects().filter(p => p.clientId === c.id);
             const select = document.getElementById('quoteProjectSelect');
             const container = document.getElementById('quoteProjectContainer');
@@ -1502,6 +1617,8 @@
             } else {
                 const quoteData = {
                     id: Date.now(),
+                    status: 'abierta', // Por defecto abierta
+                    closedAt: null,
                     projectId: linkedProjectId,
                     clientId: clientId,
                     quoteNumber: document.getElementById('quoteNumber').value.trim(),
@@ -1517,7 +1634,6 @@
 
             localStorage.setItem('quotes', JSON.stringify(quotes));
 
-            // Actualizar el proyecto en el mapa si se asoció
             if (linkedProjectId) {
                 let projects = getStoredProjects();
                 const pi = projects.findIndex(p => p.id == linkedProjectId);
@@ -1525,7 +1641,6 @@
                     projects[pi].quoteId = editingQuoteId || quotes[quotes.length-1].id;
                     saveProjects(projects);
                     
-                    // Actualizar marcador en el mapa
                     const oldM = markersMap.get(projects[pi].id);
                     if (oldM) { oldM.remove(); markersMap.delete(projects[pi].id); }
                     createMarker(projects[pi]);
@@ -1544,12 +1659,10 @@
             let quotes = JSON.parse(localStorage.getItem('quotes') || '[]').filter(q => q.id !== id);
             localStorage.setItem('quotes', JSON.stringify(quotes));
             
-            // Limpiar referencia en proyectos
             let projects = getStoredProjects();
             projects.forEach(p => { if(p.quoteId == id) p.quoteId = null; });
             saveProjects(projects);
 
-            // Actualizar marcadores
             projects.forEach(p => {
                 const oldM = markersMap.get(p.id);
                 if (oldM) { oldM.remove(); markersMap.delete(p.id); }
@@ -1561,6 +1674,7 @@
             if (document.getElementById('clientViewModal').classList.contains('flex') && currentClientId) {
                 openClientDetail(currentClientId);
             }
+            renderGlobalStats();
         };
 
     </script>
