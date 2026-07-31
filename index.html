@@ -27,7 +27,6 @@
         .color-galvanissa { color: #293241; }
         .no-scroll { overflow: hidden; }
 
-        /* 🚫 Bloquear gestos de zoom SOLO cuando el modal está abierto */
         .modal-open {
             touch-action: none;
             overscroll-behavior: contain;
@@ -35,21 +34,20 @@
 
         /* Estilo del contenedor del mapa */
         #map {
-            height: calc(100vh - 64px); /* Altura del navbar */
+            height: calc(100vh - 64px);
             width: 100%;
             z-index: 0;
         }
 
-        /* FAB */
+        /* FABs */
         .fab-container {
             position: fixed;
-            bottom: 2rem;
-            right: 2rem;
+            bottom: 1.5rem;
+            right: 1.5rem;
             z-index: 40;
         }
 
         .fab-button {
-            background-color: #293241;
             color: white;
             width: 3.5rem;
             height: 3.5rem;
@@ -57,15 +55,11 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
             transition: all 0.3s ease;
             cursor: pointer;
             font-size: 1.5rem;
-        }
-
-        .fab-button:hover {
-            transform: scale(1.1);
-            background-color: #3d5a80;
+            border: none;
         }
     </style>
 </head>
@@ -170,15 +164,24 @@
     <!-- ================= VISTA PROYECTOS ================= -->
     <div id="view-projects" class="hidden">
         <div id="map" class="w-full"></div>
-        
-        <!-- FAB Agregar -->
-        <div id="fab-add-container" class="fab-container">
-            <button id="openModalBtn" class="fab-button" title="Agregar punto">➕</button>
-        </div>
-        <!-- FAB Lista -->
-        <div id="fab-list-container" class="fixed bottom-8 left-8 z-40">
-            <button id="openListBtn" class="bg-black text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-xl hover:scale-110 transition" title="Ver proyectos">📋</button>
-        </div>
+    </div>
+
+    <!-- ================= FABs (BOTONES FLOTANTES) ================= -->
+    <!-- FAB Agregar Punto (Solo Proyectos) -->
+    <div id="fab-add-container" class="fab-container hidden">
+        <button id="openModalBtn" class="fab-button" style="background-color: #293241;" title="Agregar punto">➕</button>
+    </div>
+    <!-- FAB Lista Puntos (Solo Proyectos) -->
+    <div id="fab-list-container" class="fixed bottom-8 left-8 z-40 hidden">
+        <button id="openListBtn" class="bg-black text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-xl hover:scale-110 transition" title="Ver proyectos">📋</button>
+    </div>
+    <!-- FAB Cotización (Solo Clientes) -->
+    <div id="fab-quote-container" class="fab-container hidden">
+        <button onclick="openQuoteModal()" class="fab-button" style="background-color: #10b981;" title="Nueva Cotización">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+        </button>
     </div>
 
     <!-- ================= MODALES CLIENTES ================= -->
@@ -388,6 +391,8 @@
             const clientsView = document.getElementById('view-clients');
             const projectsView = document.getElementById('view-projects');
             const fabQuote = document.getElementById('fab-quote-container');
+            const fabAdd = document.getElementById('fab-add-container');
+            const fabList = document.getElementById('fab-list-container');
             const navClients = document.getElementById('nav-clients');
             const navProjects = document.getElementById('nav-projects');
 
@@ -395,6 +400,8 @@
                 clientsView.classList.remove('hidden');
                 projectsView.classList.add('hidden');
                 fabQuote.classList.remove('hidden');
+                fabAdd.classList.add('hidden');
+                fabList.classList.add('hidden');
                 
                 navClients.classList.add('text-indigo-600', 'font-bold');
                 navClients.classList.remove('text-gray-600', 'font-medium');
@@ -404,16 +411,31 @@
                 clientsView.classList.add('hidden');
                 projectsView.classList.remove('hidden');
                 fabQuote.classList.add('hidden');
+                fabAdd.classList.remove('hidden');
+                fabList.classList.remove('hidden');
                 
                 navProjects.classList.add('text-indigo-600', 'font-bold');
                 navProjects.classList.remove('text-gray-600', 'font-medium');
                 navClients.classList.remove('text-indigo-600', 'font-bold');
                 navClients.classList.add('text-gray-600', 'font-medium');
 
-                setTimeout(() => { if (map) map.invalidateSize(); }, 200);
+                // Inicializar el mapa solo cuando se entra a la vista por primera vez
+                if (!mapInitialized) {
+                    initMap();
+                } else {
+                    setTimeout(() => { if (map) map.invalidateSize(); }, 300);
+                }
             }
 
-            if (!mobileMenu.classList.contains('hidden')) menuToggle.click();
+            // Cerrar menú móvil forzadamente
+            if (!mobileMenu.classList.contains('hidden')) {
+                mobileMenu.classList.add('hidden');
+                iconMenu.classList.remove('hidden');
+                iconClose.classList.add('hidden');
+                document.body.classList.remove('no-scroll');
+                menuToggle.setAttribute('aria-expanded', 'false');
+            }
+            
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
@@ -720,7 +742,6 @@
             document.getElementById('view-address').textContent = c.address;
             document.getElementById('view-categories').textContent = (c.categories||[]).join(', ');
 
-            // Cargar Proyectos del Mapa
             const linkedProjects = JSON.parse(localStorage.getItem('projects') || '[]').filter(p => p.clientId === c.id);
             linkedProjects.sort((a, b) => daysRemaining(a.closeDate) - daysRemaining(b.closeDate));
             
@@ -748,7 +769,6 @@
                 projectsListContainer.innerHTML = `<p class="text-sm text-gray-500 italic">Este cliente no tiene proyectos asociados en el mapa.</p>`;
             }
 
-            // Cargar Cotizaciones
             const linkedQuotes = JSON.parse(localStorage.getItem('quotes') || '[]').filter(q => q.clientId === c.id);
             linkedQuotes.sort((a, b) => new Date(a.closeDate) - new Date(b.closeDate));
             
@@ -949,6 +969,7 @@
         // PROYECTOS: MAPA Y LÓGICA
         // ----------------------------------------------------
         let map;
+        let mapInitialized = false;
         let selectedLatLng = null;
         let tempMarker = null;
         let selectingFromMap = false;
@@ -1048,9 +1069,10 @@
 
         clientSearch.addEventListener('input', e => loadAndDisplayClients(e.target.value));
 
-        document.addEventListener('DOMContentLoaded', () => {
-            initializeCategories();
-            loadAndDisplayClients();
+        // Inicialización del mapa en diferido (Lazy Load)
+        function initMap() {
+            if (mapInitialized) return;
+            mapInitialized = true;
 
             map = L.map('map', { scrollWheelZoom: false, touchZoom: true, dragging: true, tap: false }).setView([13.80057, -88.86458], 14);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
@@ -1079,9 +1101,15 @@
                 map.getContainer().style.cursor = 'crosshair';
             };
             document.getElementById('savePointBtn').onclick = savePoint;
+            
+            setTimeout(() => { map.invalidateSize(); }, 200);
+        }
 
-            // Eventos FAB Cotizaciones
-            document.getElementById('openQuoteFabBtn').onclick = () => openQuoteModal();
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeCategories();
+            loadAndDisplayClients();
+
+            // Eventos de Cotizaciones
             document.getElementById('cancelQuoteBtn').onclick = closeQuoteModal;
             document.getElementById('saveQuoteBtn').onclick = saveQuote;
         });
@@ -1250,7 +1278,6 @@
         // ----------------------------------------------------
         // COTIZACIONES LÓGICA
         // ----------------------------------------------------
-        const quoteModal = document.getElementById('quoteModal');
         const quoteClientSearch = document.getElementById('quoteClientSearch');
         const quoteClientResults = document.getElementById('quoteClientResults');
 
@@ -1284,7 +1311,6 @@
             document.getElementById('quoteModal').classList.remove('hidden');
             document.getElementById('quoteModal').classList.add('flex');
             
-            // Reset fields
             quoteClientSearch.value = '';
             document.getElementById('quoteClientId').value = '';
             document.getElementById('quoteNumber').value = '';
@@ -1329,7 +1355,6 @@
             closeQuoteModal();
             showMessage('Cotización guardada correctamente en el perfil del cliente.');
             
-            // Si el modal del cliente está abierto, refrescarlo
             if (document.getElementById('clientViewModal').classList.contains('flex')) {
                 openClientDetail(clientId);
             }
